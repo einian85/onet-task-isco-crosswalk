@@ -1,0 +1,52 @@
+# Canonical dataset name: O*NET 25.0 (Task-ID)
+# Short label for plots: 25.0-ID
+dataset_name: ONET25
+checkpoint_prefix: ONET25
+use_task_ids: true
+output_dir: results
+final_output_path: output/ONET25_task_to_ISCO_crosswalk.csv
+onet_tasks_path: data/onet/25_0/Task Statements.xlsx
+onet_tasks_dwa_path: data/onet/25_0/Tasks to DWAs.xlsx
+onet_tasks_cat_path: data/onet/25_0/Task Categories.xlsx
+esco_skills_path: data/esco/skills_en.csv
+esco_occupation_rel_path: data/esco/occupationSkillRelations_en.csv
+esco_occupations_path: data/esco/occupations_en.csv
+data_version: managed-occupation-standards
+onet_release: db_25_0_excel
+esco_release: ESCO_en
+isco_level: 4
+random_seed: 42
+# ── O*NET/SOC query-side embedding blend ──────────────────────────────────────
+# w_soc_title > 0: blend separate SOC-title embedding into the query vector.
+# w_soc_title = 0: title is prepended as text instead (legacy; include_soc_title must be true).
+include_soc_title: true
+# ── Query-side blend weights ───────────────────────────────────────────────────
+w_soc_title: 0.0     # separate SOC-title embedding weight
+w_dwa: 0.0           # DWA items embedding weight (0 = DWAs unused)
+include_esco_skills: true
+# ── ISCO-08 standard (target-side) ────────────────────────────────────────────
+isco_tasks_path: data/isco/ISCO-08 EN Structure and definitions.xlsx
+embedding_model: all-mpnet-base-v2
+normalize_embeddings: true
+# ── Target-side blend weights ──────────────────────────────────────────────────
+w_isco: 0.0          # ISCO share; 0 = pure ESCO
+w_isco_task: 0.0     # within ISCO: task items vs info text
+w_occ: 0.85          # occ share within ESCO component; skill = 1 - w_occ
+embedding_cache_dir: checkpoints
+faiss_index_type: FlatIP
+k_retrieve: 5
+keep_best_per_task: true
+min_sim: 0.45
+margin_best: 0.03
+max_links_per_task: 1
+enforce_isco_coverage: true
+coverage_backfill_strategy: best_task_for_missing_isco
+enable_overload_control: true
+overload_abs: 200
+overload_quantile: 0.95
+overload_min_sim: 0.55
+overload_margin_best: 0.02
+softmax_temperature: 0.05
+lowconf_gap_threshold: 0.01
+lowconf_entropy_threshold: 1.2
+limit_tasks: null

@@ -1,0 +1,6 @@
+label,description,n_judged,pct_exact,pct_sub_major,pct_major_group,mean_similarity
+fr0043,"Best focused (w_isco=0.828, w_dwa=0.037, w_soc=0.599, links=1)",108,61.1,76.9,81.5,0.704
+fg_isco04_dwa00_soc50,"Best grid (w_isco=0.4, w_dwa=0.0, w_soc=0.50, links=1)",108,57.4,75.0,80.6,0.716
+sw0156,"Best random sweep (w_isco=0.587, w_dwa=0.137, w_soc=0.616, links=3)",108,59.3,73.1,78.7,0.704
+w0.70,"Old 1D peak (ESCO-only, w_soc_title=0.70)",108,63.9,74.1,80.6,0.673
+w0.00,"Pure baseline (no title, no ISCO)",108,25.9,39.8,50.9,0.608
