@@ -49,3 +49,7 @@ output/archive/
 # Keep the two production crosswalks
 !output/ONET29_task_to_ISCO_crosswalk.csv
 !output/ONET25_task_to_ISCO_crosswalk.csv
+
+
+README.html
+README_files/
