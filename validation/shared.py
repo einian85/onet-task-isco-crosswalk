@@ -77,12 +77,12 @@ EMP_STATS_DIR = AI_ON_JOBS_DIR / "Data" / "Managed-EmpStats"
 
 # ── Raw crosswalk file paths ──────────────────────────────────────────────────
 # SOC18 crosswalks — use with ONET29 pipeline
-XW_ESCO_TO_SOC18 = DATA_DIR / "crosswalks" / "ESCO_to_ONET-SOC-8627.xlsx"        # ESCO → ONET-SOC18
-XW_SOC18_TO_ESCO = DATA_DIR / "crosswalks" / "ONET_(Occupations)_0_updated.csv"   # ONET-SOC18 → ESCO/ISCO (ESCO Secretariat)
+XW_ESCO_TO_SOC18 = DATA_DIR / "crosswalks" / "ESCO_to_ONET-SOC.xlsx"             # ESCO → ONET-SOC18
+XW_SOC18_TO_ESCO = DATA_DIR / "crosswalks" / "ONET_(Occupations)_0_updated.csv"  # ONET-SOC18 → ESCO/ISCO (ESCO Secretariat)
 
 # SOC10 crosswalks — use with ONET25 pipeline
-XW_ESCO_ONET_MHV  = DATA_DIR / "crosswalks" / "esco_onet_matysiaketal2024.csv"   # ESCO ↔ O*NET, semantic similarity (Matysiak et al. 2024)
-XW_SOC10_ISCO_BLS = DATA_DIR / "crosswalks" / "isco08_soc10_crosswalk-1125.xls"  # BLS official SOC10 → ISCO
+XW_ESCO_ONET_MHV  = DATA_DIR / "crosswalks" / "esco_onet_matysiaketal2024.csv"  # ESCO ↔ O*NET, semantic similarity (Matysiak et al. 2024)
+XW_SOC10_ISCO_BLS = DATA_DIR / "crosswalks" / "isco_soc_crosswalk.xls"          # BLS official SOC10 → ISCO
 
 # ── HR survey path ────────────────────────────────────────────────────────────
 # Optional — not included in standalone distribution. Script skips Part B if missing.

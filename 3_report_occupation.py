@@ -122,7 +122,7 @@ def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
     refs["XW10.1_esco_onet"] = xw10_1[["soc_code", "isco_code", "score"]].dropna().drop_duplicates()
 
     try:
-        xw10_2 = pd.read_excel("data/crosswalks/isco08_soc10_crosswalk-1125.xls", sheet_name="Data")
+        xw10_2 = pd.read_excel("data/crosswalks/isco_soc_crosswalk.xls", sheet_name="Data")
         norm_cols = {c: c.strip().lower().replace("-", "_").replace(" ", "_") for c in xw10_2.columns}
         xw10_2 = xw10_2.rename(columns=norm_cols)
         xw10_2 = xw10_2.rename(columns={"2010_soc_code": "soc_raw", "isco_08_code": "isco_raw"})
@@ -133,7 +133,7 @@ def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
     except Exception:
         pass
 
-    xw18_1 = pd.read_excel("data/crosswalks/ESCO_to_ONET-SOC-8627.xlsx", sheet_name="Crosswalk")
+    xw18_1 = pd.read_excel("data/crosswalks/ESCO_to_ONET-SOC.xlsx", sheet_name="Crosswalk")
     xw18_1 = xw18_1.rename(columns={"SOC19-Code": "soc_raw", "ESCO-Code": "isco_raw"})
     xw18_1["soc_code"] = xw18_1["soc_raw"].map(normalize_soc)
     xw18_1["isco_code"] = xw18_1["isco_raw"].map(normalize_isco)
@@ -352,7 +352,7 @@ def build_stage_task_examples() -> pd.DataFrame:
 
 def build_top1_mismatch_examples(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
-    xw18_2 = pd.read_excel("data/crosswalks/ONET-SOC-to-ESCO-4253.xlsx", sheet_name="crosswalk")
+    xw18_2 = pd.read_excel("data/crosswalks/ONET-SOC_to_ESCO.xlsx", sheet_name="crosswalk")
     xw18_2 = xw18_2.rename(columns={"ISCO_code": "isco_raw", "ISCO_Title": "reference_isco_title"})
     xw18_2["isco_code"] = xw18_2["isco_raw"].map(normalize_isco)
     isco_title_map = xw18_2[["isco_code", "reference_isco_title"]].dropna().drop_duplicates().drop_duplicates(subset=["isco_code"])

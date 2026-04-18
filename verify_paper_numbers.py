@@ -87,7 +87,7 @@ xw2['isco'] = (xw2['ESCO or ISCO URI']
     .str.extract(r'/C(\d{4})', expand=False))
 xw2 = xw2.dropna(subset=['soc', 'isco'])
 
-xw1 = pd.read_excel(BASE / 'data/crosswalks/ESCO_to_ONET-SOC-8627.xlsx')
+xw1 = pd.read_excel(BASE / 'data/crosswalks/ESCO_to_ONET-SOC.xlsx')
 xw1.columns = xw1.columns.str.strip()
 xw1['soc'] = xw1['SOC19-Code'].apply(norm_soc)
 xw1['isco'] = xw1['ESCO-Code'].apply(
