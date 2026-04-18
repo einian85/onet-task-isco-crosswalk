@@ -352,10 +352,14 @@ def build_stage_task_examples() -> pd.DataFrame:
 
 def build_top1_mismatch_examples(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
-    xw18_2 = pd.read_excel("data/crosswalks/ONET-SOC_to_ESCO.xlsx", sheet_name="crosswalk")
-    xw18_2 = xw18_2.rename(columns={"ISCO_code": "isco_raw", "ISCO_Title": "reference_isco_title"})
-    xw18_2["isco_code"] = xw18_2["isco_raw"].map(normalize_isco)
-    isco_title_map = xw18_2[["isco_code", "reference_isco_title"]].dropna().drop_duplicates().drop_duplicates(subset=["isco_code"])
+    isco_def = pd.read_excel(
+        "data/isco/ISCO-08 EN Structure and definitions.xlsx",
+        sheet_name="ISCO-08 EN Struct and defin",
+        usecols=["Level", "ISCO 08 Code", "Title EN"],
+    )
+    isco_def = isco_def[isco_def["Level"] == 4].copy()
+    isco_def["isco_code"] = isco_def["ISCO 08 Code"].astype(str).str.zfill(4)
+    isco_title_map = isco_def[["isco_code", "Title EN"]].rename(columns={"Title EN": "reference_isco_title"}).drop_duplicates(subset=["isco_code"])
 
     for dataset_id, meta in DATASETS.items():
         implied_links = load_implied_links(meta)

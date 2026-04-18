@@ -113,14 +113,13 @@ Source data is not included in this repository. Download and place files as foll
 **ISCO-08** (https://www.ilo.org/public/english/bureau/stat/isco/isco08/):
 - `ISCO-08 EN Structure and definitions.xlsx` → `data/isco/`
 
-**Reference crosswalks** (used by `3_report_occupation.py` for validation):
+**Reference crosswalks** (the 4 used for validation in the paper):
 
 | Source | File | Save to |
 |--------|------|---------|
 | Matysiak et al. (2024) ESCO–O\*NET — https://doi.org/10.5281/ZENODO.12699781 | `esco_onet_matysiaketal2024.csv` | `data/crosswalks/` |
 | BLS SOC 2010 ↔ ISCO-08 — https://www.bls.gov/soc/isco_soc_crosswalk.xls | `isco_soc_crosswalk.xls` | `data/crosswalks/` |
 | O\*NET Center ESCO → O\*NET-SOC — https://www.onetcenter.org/crosswalks/esco/ESCO_to_ONET-SOC.xlsx | `ESCO_to_ONET-SOC.xlsx` | `data/crosswalks/` |
-| O\*NET Center O\*NET-SOC → ESCO — https://www.onetcenter.org/crosswalks/esco/ONET-SOC_to_ESCO.xlsx | `ONET-SOC_to_ESCO.xlsx` | `data/crosswalks/` |
 | ESCO Secretariat O\*NET-SOC → ESCO — https://esco.ec.europa.eu/en/use-esco/other-crosswalks | `ONET_(Occupations)_0_updated.csv` | `data/crosswalks/` |
 
 ---
