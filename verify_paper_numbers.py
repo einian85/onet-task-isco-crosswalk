@@ -55,8 +55,8 @@ def read_yaml_simple(path):
                 result[k] = v
     return result
 
-cfg = read_yaml_simple(BASE / 'config_ONET29_final.yaml')
-print(f"\n[4] Production config (config_ONET29_final.yaml):")
+cfg = read_yaml_simple(BASE / 'config_onet29.yaml')
+print(f"\n[4] Production config (config_onet29.yaml):")
 print(f"    w_soc_title:  {cfg.get('w_soc_title')}  (SOC title weight in query)")
 print(f"    w_isco:       {cfg.get('w_isco')}   (ISCO task weight in target)")
 print(f"    w_dwa:        {cfg.get('w_dwa')}   (DWA weight)")
@@ -64,17 +64,14 @@ print(f"    min_sim:      {cfg.get('min_sim')}")
 print(f"    margin_best:  {cfg.get('margin_best')}")
 print(f"    max_links_per_task: {cfg.get('max_links_per_task')}")
 
-# ── 4. ISCO-08 coverage from aggregated crosswalk (after coverage enforcement) ─
-agg29 = pd.read_csv(BASE / 'output/ONET29_task_to_ISCO_aggregated.csv')
-agg29['iscoGroup'] = agg29['iscoGroup'].astype(str).str.zfill(4)
-assigned_groups = agg29['iscoGroup'].nunique()
-has_1113 = '1113' in agg29['iscoGroup'].values
+# ── 4. ISCO-08 coverage (S5_FINAL stage = coverage-enforced output) ───────────
+cw29 = pd.read_csv(BASE / 'output/ONET29_task_to_ISCO_crosswalk.csv')
+cw29_best = cw29[cw29['stage'] == 'S5_FINAL'].copy()
+cw29_best['iscoGroup'] = cw29_best['iscoGroup'].astype(str).str.zfill(4)
+assigned_groups = cw29_best['iscoGroup'].nunique()
+has_1113 = '1113' in cw29_best['iscoGroup'].values
 print(f"\n[5] ISCO-08 unit groups with >=1 task:  {assigned_groups}  (paper says 435)")
 print(f"    ISCO 1113 assigned:  {has_1113}  (paper says NOT assigned)")
-# Also load raw crosswalk for chain validation below
-cw29 = pd.read_csv(BASE / 'output/ONET29_task_to_ISCO_crosswalk.csv')
-cw29_best = cw29[cw29['is_best']].copy()
-cw29_best['iscoGroup'] = cw29_best['iscoGroup'].astype(str).str.zfill(4)
 
 # ── 5. Chain crosswalk agreement (production config, ONET29) ─────────────────
 tasks29['soc'] = tasks29['O*NET-SOC Code'].apply(norm_soc)
@@ -82,11 +79,13 @@ m29 = cw29_best.merge(tasks29[['Task ID','soc']].rename(columns={'Task ID':'task
                       on='task_id', how='inner')
 m29['isco_major'] = m29['iscoGroup'].str[0]
 
-xw2 = pd.read_excel(BASE / 'data/crosswalks/ONET-SOC-to-ESCO-4253.xlsx')
-xw2.columns = xw2.columns.str.strip()
+xw2 = pd.read_csv(BASE / 'data/crosswalks/ONET_(Occupations)_0_updated.csv')
 xw2['soc'] = xw2['O*NET Id'].apply(norm_soc)
-xw2['isco'] = xw2['ISCO_code'].apply(norm_isco)
-xw2 = xw2.dropna(subset=['soc','isco'])
+# Extract 4-digit ISCO code from URI (e.g. ".../isco/C2512"); skip ESCO occupation URIs
+xw2['isco'] = (xw2['ESCO or ISCO URI']
+    .where(xw2['ESCO or ISCO URI'].str.contains('/isco/', na=False))
+    .str.extract(r'/C(\d{4})', expand=False))
+xw2 = xw2.dropna(subset=['soc', 'isco'])
 
 xw1 = pd.read_excel(BASE / 'data/crosswalks/ESCO_to_ONET-SOC-8627.xlsx')
 xw1.columns = xw1.columns.str.strip()
@@ -111,13 +110,17 @@ print(f"    Exact (4-digit):       {exact29:.1f}%  (paper says 84.6%)")
 print(f"    Major-group (1-digit): {major29:.1f}%  (paper says 94.7%)")
 
 # ── 6. Cross-release stability ────────────────────────────────────────────────
-stab = pd.read_csv(BASE / 'ground_truth/results/gt05_cross_dataset_overall.csv')
-row = stab[stab['label'] == 'ONET29 vs ONET25']
-if not row.empty:
-    n_shared = int(row['n'].values[0])
-    stab_pct = float(row['exact_agreement_pct'].values[0])
-    print(f"\n[7] Cross-release stability (shared tasks, ONET29 vs ONET25):")
-    print(f"    Shared tasks:      {n_shared:,}   (paper says 14,174)")
-    print(f"    Exact agreement:   {stab_pct:.1f}%  (paper says 100%)")
+stab_path = BASE / 'validation/results/stability_cross_dataset_overall.csv'
+if stab_path.exists():
+    stab = pd.read_csv(stab_path)
+    row = stab[stab['label'] == 'ONET29 vs ONET25']
+    if not row.empty:
+        n_shared = int(row['n'].values[0])
+        stab_pct = float(row['exact_agreement_pct'].values[0])
+        print(f"\n[7] Cross-release stability (shared tasks, ONET29 vs ONET25):")
+        print(f"    Shared tasks:      {n_shared:,}   (paper says 14,174)")
+        print(f"    Exact agreement:   {stab_pct:.1f}%  (paper says 100%)")
+else:
+    print(f"\n[7] Cross-release stability: {stab_path.name} not found — skipped")
 
 print("\n" + "=" * 60)
