@@ -21,7 +21,7 @@ random_seed: 42
 # w_soc_title = 0: title is prepended as text instead (legacy; include_soc_title must be true).
 include_soc_title: true
 # ── Query-side blend weights ───────────────────────────────────────────────────
-w_soc_title: 0.0     # separate SOC-title embedding weight
+w_soc_title: 0.75    # separate SOC-title embedding weight
 w_dwa: 0.0           # DWA items embedding weight (0 = DWAs unused)
 include_esco_skills: true
 # ── ISCO-08 standard (target-side) ────────────────────────────────────────────
