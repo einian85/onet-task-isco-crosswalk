@@ -1,0 +1,27 @@
+﻿parameters:
+  - parameter: min_sim
+    values: [0.35, 0.40, 0.45, 0.50, 0.55]
+  - parameter: margin_best
+    values: [0.00, 0.01, 0.03, 0.05]
+  - parameter: max_links_per_task
+    values: [1, 2, 3, 5]
+  - parameter: w_dwa
+    values: [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+  - parameter: w_soc_title
+    values: [0.0, 0.1, 0.3, 0.5, 0.75, 1.0]
+  - parameter: w_isco
+    values: [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+  - parameter: w_isco_task
+    values: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+  - parameter: w_occ
+    values: [0.5, 0.7, 0.85, 0.9, 1.0]
+  - parameter: k_retrieve
+    values: [5, 10, 20]
+  - parameter: overload_abs
+    values: [100, 200, 300]
+  - parameter: overload_quantile
+    values: [0.90, 0.95, 0.98]
+  - parameter: overload_min_sim
+    values: [0.45, 0.50, 0.55, 0.60]
+  - parameter: overload_margin_best
+    values: [0.00, 0.01, 0.02, 0.03]
