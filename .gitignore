@@ -37,6 +37,7 @@ __pycache__/
 .idea/
 .qodo/
 .DS_Store
+.claude/
 Thumbs.db
 
 # Sweep outputs (not part of publication pipeline)
