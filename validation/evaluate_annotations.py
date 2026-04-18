@@ -1,24 +1,22 @@
 """
-gt_03_human_evaluate_v3.py
-==========================
-Ground Truth – Approach 3 (Step 2, v3): Evaluate Filled Human Validation Excel
+evaluate_annotations.py
+=======================
+Step 2: Evaluate Filled Human Annotation Excel
 
-Reads the Excel file produced by gt_03_human_generate_v3.py after a domain
-expert has filled in the "expert_isco" column.
+Reads the workbook produced by generate_workbook.py after a domain expert
+has filled in the "expert_isco" column.
 
-For each pipeline configuration (sw0156, sw0099, sw0455, w0.70, w0.00) computes:
+For each pipeline configuration computes:
   - match_exact       — expert_isco == isco_{label}  (4-digit)
   - match_sub_major   — first 2 digits match
   - match_major_group — first digit matches
 
-Also compares against the v2 results to track improvement.
+Output CSVs written to validation/results/:
+  human_eval_onet29.csv         — per-task detail
+  human_eval_onet29_summary.csv — variant comparison table
 
-Output CSVs written to ground_truth/results/:
-  gt03_human_eval_ONET29_v3.csv         — per-task detail
-  gt03_human_eval_summary_ONET29_v3.csv — variant comparison table
-
-Usage:
-    "C:/Users/einianma/AppData/Local/miniconda3/envs/onet-isco-nlp/python.exe" ground_truth/gt_03_human_evaluate_v3.py
+Run from the project root:
+    python validation/evaluate_annotations.py
 """
 
 from __future__ import annotations
@@ -38,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from shared import GT_RESULTS_DIR, PROJECT_DIR, load_pipeline
 
-VALIDATION_FILE = GT_RESULTS_DIR / "gt_human_validation_ONET29_v3.xlsx"
+VALIDATION_FILE = GT_RESULTS_DIR / "annotation_workbook_onet29.xlsx"
 SWEEP_DIR         = PROJECT_DIR / "output" / "sweep_ONET29"
 FOCUSED_SWEEP_DIR = PROJECT_DIR / "output" / "sweep_focused"
 
@@ -182,8 +180,8 @@ if "match_exact_fr0043" in df.columns:
     print(by_major.to_string(index=False))
 
 # ── Write outputs ─────────────────────────────────────────────────────────────
-detail_path  = GT_RESULTS_DIR / "gt03_human_eval_ONET29_v3.csv"
-summary_path = GT_RESULTS_DIR / "gt03_human_eval_summary_ONET29_v3.csv"
+detail_path  = GT_RESULTS_DIR / "human_eval_onet29.csv"
+summary_path = GT_RESULTS_DIR / "human_eval_onet29_summary.csv"
 df.to_csv(detail_path, index=False)
 summary.to_csv(summary_path, index=False)
 print(f"\n  Detail:  {detail_path}")
@@ -208,7 +206,7 @@ ax.legend(fontsize=9)
 ax.grid(True, axis="y", alpha=0.3)
 ax.set_ylim(0, min(100, summary["pct_major_group"].max() + 12))
 plt.tight_layout()
-out_plot = GT_RESULTS_DIR / "gt03_human_eval_ONET29_v3_by_variant.png"
+out_plot = GT_RESULTS_DIR / "human_eval_onet29_by_variant.png"
 fig.savefig(out_plot, dpi=150)
 plt.close(fig)
 print(f"  Plot:    {out_plot}")

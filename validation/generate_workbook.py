@@ -1,11 +1,10 @@
 """
-gt_03_human_generate_v3.py
-==========================
-Ground Truth – Approach 3 (Step 1, v3): Generate Human Validation Excel
+generate_workbook.py
+====================
+Step 1: Generate Human Annotation Excel
 
-Generates a new validation workbook using the best configs from the
-multidimensional parameter sweep (04_run_sweep_onet29.py), replacing the
-old 1D w_soc_title sweep variants.
+Generates the human annotation workbook from the best sweep configs.
+Output: validation/results/annotation_workbook_onet29.xlsx
 
 Weight variants shown side-by-side:
   sw0156  — best overall (mixed ISCO+ESCO; w_isco=0.587, w_dwa=0.137, w_soc=0.616)
@@ -14,23 +13,16 @@ Weight variants shown side-by-side:
   w0.70   — old 1D ESCO-only peak (historical reference; w_soc_title=0.70)
   w0.00   — pure task-semantic baseline (no title, no ISCO blend)
 
-LAYOUT
-------
-Same as v2: task_id, onet_soc_code, soc_code, soc_title, task_text, importance,
+LAYOUT: task_id, onet_soc_code, soc_code, soc_title, task_text, importance,
 crosswalk_acceptable_iscos, expert_isco, expert_notes, then one set of
 (isco_*, occ_*, sim_*) columns per variant.
 
-TASK SELECTION — unchanged from v2
----------------------------------------
-SOC codes sampled from institutional crosswalks, stratified by ISCO major group
-1-9 and weighted by real employment (US + Nordic countries). Tasks selected by
-O*NET importance score.
+TASK SELECTION: SOC codes sampled from institutional crosswalks, stratified by
+ISCO major group 1-9 and weighted by employment (US + Nordic countries). Tasks
+selected by O*NET importance score.
 
-Run from the stage-02 directory:
-    "C:/Users/einianma/AppData/Local/miniconda3/envs/onet-isco-nlp/python.exe" ground_truth/gt_03_human_generate_v3.py
-
-Previous v2 workbook preserved at:
-    ground_truth/results/archive_v2/gt_human_validation_ONET29_v2.xlsx
+Run from the project root:
+    python validation/generate_workbook.py
 """
 
 from __future__ import annotations
@@ -113,12 +105,12 @@ def _load_pipeline_lookup(path: Path, label: str) -> pd.DataFrame:
 
 def generate_validation_sheet(
     weight_variants: list[tuple[str, Path, str]],
-    onet_version: str,
     crosswalk_dfs: list[pd.DataFrame],
     soc_col: str,
     output_filename: str,
 ) -> pd.DataFrame:
-    """Build a multi-variant validation DataFrame and write it to Excel."""
+    """Build the ONET29 multi-variant validation DataFrame and write it to Excel."""
+    onet_version = "29"  # Human annotation is O*NET 29.2 / SOC18 only
 
     # ── Step 1: Combined institutional crosswalk ──────────────────────────────
     combined_xw = (
@@ -321,11 +313,10 @@ if __name__ == "__main__":
     xw18 = load_soc18_crosswalks()
     generate_validation_sheet(
         weight_variants=ONET29_WEIGHT_VARIANTS,
-        onet_version="29",
         crosswalk_dfs=[xw18["xw18_1"], xw18["xw18_2"][["soc_code18", "isco_code"]]],
         soc_col="soc_code18",
-        output_filename="gt_human_validation_ONET29_v3.xlsx",
+        output_filename="annotation_workbook_onet29.xlsx",
     )
 
     print("\nDone. Fill in expert_isco (and optionally expert_notes) for each row,")
-    print("then run gt_03_human_evaluate_v3.py.")
+    print("then run validation/evaluate_annotations.py.")

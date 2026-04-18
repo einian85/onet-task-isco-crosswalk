@@ -1,10 +1,10 @@
 """
-gt_shared.py
-============
-Shared helpers imported by all ground-truth evaluation scripts.
+shared.py
+=========
+Shared helpers imported by all validation scripts.
 
-Run any gt_*.py script from the project root, e.g.:
-    python ground_truth/gt_01_chain.py
+Run any validation script from the project root, e.g.:
+    python validation/validate_chain.py
 
 All data paths resolve relative to the project directory automatically (data/ subfolder).
 """
@@ -23,7 +23,7 @@ AI_ON_JOBS_DIR = PROJECT_DIR.parent   # root AI-on-Jobs repo
 DATA_DIR      = PROJECT_DIR / "data"
 
 # ── Output directory ──────────────────────────────────────────────────────────
-GT_RESULTS_DIR = PROJECT_DIR / "ground_truth" / "results"
+GT_RESULTS_DIR = PROJECT_DIR / "validation" / "results"
 GT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Pipeline output paths ─────────────────────────────────────────────────────
@@ -78,12 +78,11 @@ EMP_STATS_DIR = AI_ON_JOBS_DIR / "Data" / "Managed-EmpStats"
 # ── Raw crosswalk file paths ──────────────────────────────────────────────────
 # SOC18 crosswalks — use with ONET29 pipeline
 XW_ESCO_TO_SOC18 = DATA_DIR / "crosswalks" / "ESCO_to_ONET-SOC-8627.xlsx"        # ESCO → ONET-SOC18
-XW_SOC18_TO_ESCO = DATA_DIR / "crosswalks" / "ONET-SOC-to-ESCO-4253.xlsx"         # ONET-SOC18 → ESCO, has match quality
+XW_SOC18_TO_ESCO = DATA_DIR / "crosswalks" / "ONET_(Occupations)_0_updated.csv"   # ONET-SOC18 → ESCO/ISCO (ESCO Secretariat)
 
 # SOC10 crosswalks — use with ONET25 pipeline
-XW_ESCO_ONET_MHV  = DATA_DIR / "crosswalks" / "esco_onet_crosswalk-1680.xlsx"          # ESCO ↔ O*NET, semantic similarity (MHV 2024)
-XW_SOC10_ISCO_BLS = DATA_DIR / "crosswalks" / "isco08_soc10_crosswalk-1125.xls"        # BLS official SOC10 → ISCO
-XW_SOC10_ISCO_IBS = DATA_DIR / "crosswalks" / "soc10_isco08_dta__ibs_org_pl-1131.xlsx" # IBS Poland SOC10 → ISCO
+XW_ESCO_ONET_MHV  = DATA_DIR / "crosswalks" / "esco_onet_matysiaketal2024.csv"   # ESCO ↔ O*NET, semantic similarity (Matysiak et al. 2024)
+XW_SOC10_ISCO_BLS = DATA_DIR / "crosswalks" / "isco08_soc10_crosswalk-1125.xls"  # BLS official SOC10 → ISCO
 
 # ── HR survey path ────────────────────────────────────────────────────────────
 # Optional — not included in standalone distribution. Script skips Part B if missing.
@@ -146,12 +145,17 @@ def load_soc18_crosswalks() -> dict[str, pd.DataFrame]:
         .reset_index(drop=True)
     )
 
-    # XW18.2: ONET-SOC → ESCO (has explicit ISCO code + match quality)
-    raw2 = clean_names(pd.read_excel(XW_SOC18_TO_ESCO, sheet_name="crosswalk"))
+    # XW18.2: ONET-SOC → ESCO/ISCO (CSV; ISCO code extracted from URI, e.g. ".../isco/C2512")
+    raw2 = clean_names(pd.read_csv(XW_SOC18_TO_ESCO))
+    raw2["isco_code_raw"] = (
+        raw2["esco_or_isco_uri"]
+        .where(raw2["esco_or_isco_uri"].str.contains("/isco/", na=False))
+        .str.extract(r"/C(\d{4})", expand=False)
+    )
     xw18_2 = (
         raw2.assign(
             soc_code18=soc_to_7(raw2["o_net_id"]),
-            isco_code=pd.to_numeric(raw2["isco_code"], errors="coerce").astype("Int64"),
+            isco_code=pd.to_numeric(raw2["isco_code_raw"], errors="coerce").astype("Int64"),
             match_score=raw2["type_of_match"].map(MATCH_SCORES),
         )
         [["soc_code18", "isco_code", "type_of_match", "match_score"]]
@@ -174,9 +178,9 @@ def load_soc18_crosswalks() -> dict[str, pd.DataFrame]:
 # IBS Poland (xw10_3) was dropped: derived from BLS, adds no independent information.
 
 def load_soc10_crosswalks() -> dict[str, pd.DataFrame]:
-    # XW10.1: ESCO ↔ O*NET semantic similarity
+    # XW10.1: ESCO ↔ O*NET semantic similarity (Matysiak et al. 2024)
     # O*NET codes ("11-1011.00") are truncated to 7-char SOC10 codes.
-    raw1 = clean_names(pd.read_excel(XW_ESCO_ONET_MHV))
+    raw1 = clean_names(pd.read_csv(XW_ESCO_ONET_MHV))
     xw10_1 = (
         raw1.assign(soc_code10=soc_to_7(raw1["onet_code"]),
                     isco_code=pd.to_numeric(raw1["isco_code"], errors="coerce").astype("Int64"))

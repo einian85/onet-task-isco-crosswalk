@@ -1,7 +1,7 @@
 """
-gt_01_chain.py
-==============
-Ground Truth – Approach 1: Chain Crosswalk Evaluation
+validate_chain.py
+=================
+Chain Crosswalk Validation
 
 Validates pipeline ISCO predictions by tracing the chain:
 
@@ -47,8 +47,8 @@ Three match tiers are evaluated for every scenario:
 Each scenario is broken down three ways:
     Overall summary | By similarity bin | By predicted ISCO major group
 
-Run from the AI-on-Jobs project root:
-    python 02-ONET-Task-ESCO-Crosswalk-Python/ground_truth/gt_01_chain.py
+Run from the project root:
+    python validation/validate_chain.py
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ import pandas as pd
 from shared import (
     GT_RESULTS_DIR,
     PIPELINE_ONET29,
-    PIPELINE_ONET29_WT02,
+    PIPELINE_ONET29_WT20,
     PIPELINE_ONET25,
     evaluate_match,
     load_onet_tasks,
@@ -241,69 +241,69 @@ print(results_oneto["by_major_group"].to_string(index=False))
 # occupation title improves chain-crosswalk agreement, especially for
 # managerial occupations (major group 1) whose tasks are semantically broad.
 
-if PIPELINE_ONET29_WT02.exists():
+if PIPELINE_ONET29_WT20.exists():
     print("\n══ PART C: ONET29 w_soc_title=0.20 sensitivity ═══════════════════════════")
 
-    pipeline_wt02 = load_pipeline(PIPELINE_ONET29_WT02)
+    pipeline_wt20 = load_pipeline(PIPELINE_ONET29_WT20)
 
-    print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_wt02):,}")
+    print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_wt20):,}")
 
-    scenarios_wt02 = [
-        run_scenario(pipeline_wt02, task_soc_onet,
+    scenarios_wt20 = [
+        run_scenario(pipeline_wt20, task_soc_onet,
                      xw18_1[["soc_code18", "isco_code"]],
-                     "soc_code18", "C1 – wt02 ESCO-SOC18 alone"),
+                     "soc_code18", "C1 – wt20 ESCO-SOC18 alone"),
 
-        run_scenario(pipeline_wt02, task_soc_onet,
+        run_scenario(pipeline_wt20, task_soc_onet,
                      xw18_2[["soc_code18", "isco_code"]],
-                     "soc_code18", "C2 – wt02 SOC18-ESCO alone"),
+                     "soc_code18", "C2 – wt20 SOC18-ESCO alone"),
 
-        run_scenario(pipeline_wt02, task_soc_onet,
+        run_scenario(pipeline_wt20, task_soc_onet,
                      make_strict_xw(xw18_1[["soc_code18", "isco_code"]],
                                     xw18_2[["soc_code18", "isco_code"]], "soc_code18"),
-                     "soc_code18", "C3 – wt02 Strict intersection"),
+                     "soc_code18", "C3 – wt20 Strict intersection"),
 
-        run_scenario(pipeline_wt02, task_soc_onet,
+        run_scenario(pipeline_wt20, task_soc_onet,
                      make_lenient_xw(xw18_1[["soc_code18", "isco_code"]],
                                      xw18_2[["soc_code18", "isco_code"]], "soc_code18"),
-                     "soc_code18", "C4 – wt02 Lenient union"),
+                     "soc_code18", "C4 – wt20 Lenient union"),
     ]
 
-    results_wt02 = collect_results(scenarios_wt02)
+    results_wt20 = collect_results(scenarios_wt20)
 
-    print("\n─── Overall match rates (ONET29 wt02 vs baseline) ───────────────────────")
+    print("\n─── Overall match rates (ONET29 wt20 vs baseline) ───────────────────────")
     # Side-by-side: baseline A4 vs sensitivity C4 (lenient union — most informative)
     comparison = pd.concat([
         results_onet["overall"][results_onet["overall"]["label"].str.startswith("A4")],
-        results_wt02["overall"][results_wt02["overall"]["label"].str.startswith("C4")],
+        results_wt20["overall"][results_wt20["overall"]["label"].str.startswith("C4")],
     ], ignore_index=True)
     print(comparison.to_string(index=False))
 
     print("\n─── By predicted ISCO major group — Lenient union (A4 vs C4) ────────────")
     mg_compare = pd.concat([
         results_onet["by_major_group"][results_onet["by_major_group"]["label"].str.startswith("A4")],
-        results_wt02["by_major_group"][results_wt02["by_major_group"]["label"].str.startswith("C4")],
+        results_wt20["by_major_group"][results_wt20["by_major_group"]["label"].str.startswith("C4")],
     ], ignore_index=True)
     print(mg_compare.to_string(index=False))
 
-    print("\n─── Full wt02 overall results ────────────────────────────────────────────")
-    print(results_wt02["overall"].to_string(index=False))
+    print("\n─── Full wt20 overall results ────────────────────────────────────────────")
+    print(results_wt20["overall"].to_string(index=False))
 
 else:
-    print("\n[Part C skipped — run ONET29wt02-ESCO-NLP.py first to generate the wt02 pipeline output]")
-    results_wt02 = None
+    print("\n[Part C skipped — run ONET29wt20-ESCO-NLP.py first to generate the wt20 pipeline output]")
+    results_wt20 = None
 
 
 # ── Write results to CSV ──────────────────────────────────────────────────────
 
 runs = [("onet29", results_onet), ("onet25", results_oneto)]
-if results_wt02 is not None:
-    runs.append(("onet29_wt02", results_wt02))
+if results_wt20 is not None:
+    runs.append(("onet29_wt20", results_wt20))
 
 for stem, results in runs:
     for suffix, df in results.items():
-        path = GT_RESULTS_DIR / f"gt01_{stem}_{suffix}.csv"
+        path = GT_RESULTS_DIR / f"chain_eval_{stem}_{suffix}.csv"
         df.to_csv(path, index=False)
 
 print(f"\nAll results written to: {GT_RESULTS_DIR}")
-print("Files: gt01_onet29_*.csv, gt01_onet25_*.csv" +
-      (" gt01_onet29_wt02_*.csv" if results_wt02 is not None else " [wt02 skipped]"))
+print("Files: chain_eval_onet29_*.csv, chain_eval_onet25_*.csv" +
+      (" chain_eval_onet29_wt20_*.csv" if results_wt20 is not None else " [wt20 skipped]"))
