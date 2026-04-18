@@ -115,7 +115,7 @@ def top1_mapping(df: pd.DataFrame, score_col: str) -> pd.DataFrame:
 def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
     refs: dict[str, pd.DataFrame] = {}
 
-    xw10_1 = pd.read_excel("data/crosswalks/esco_onet_crosswalk-1680.xlsx")
+    xw10_1 = pd.read_csv("data/crosswalks/esco_onet_matysiaketal2024.csv")
     xw10_1 = xw10_1.rename(columns={"onet_code": "soc_raw", "isco_code": "isco_raw", "semantic_similarity": "score"})
     xw10_1["soc_code"] = xw10_1["soc_raw"].map(normalize_soc)
     xw10_1["isco_code"] = xw10_1["isco_raw"].map(normalize_isco)
@@ -140,8 +140,12 @@ def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
     xw18_1["score"] = 1.0
     refs["XW18.1_esco_to_onetsoc"] = xw18_1[["soc_code", "isco_code", "score"]].dropna().drop_duplicates()
 
-    xw18_2 = pd.read_excel("data/crosswalks/ONET-SOC-to-ESCO-4253.xlsx", sheet_name="crosswalk")
-    xw18_2 = xw18_2.rename(columns={"O*NET Id": "soc_raw", "ISCO_code": "isco_raw", "Type of Match": "match_type"})
+    xw18_2 = pd.read_csv("data/crosswalks/ONET_(Occupations)_0_updated.csv")
+    xw18_2 = xw18_2.rename(columns={"O*NET Id": "soc_raw", "Type of Match": "match_type"})
+    # Extract 4-digit ISCO code from URI (e.g. ".../esco/isco/C2512"); skip ESCO occupation URIs
+    xw18_2["isco_raw"] = xw18_2["ESCO or ISCO URI"].where(
+        xw18_2["ESCO or ISCO URI"].str.contains("/isco/", na=False)
+    ).str.extract(r"/C(\d{4})", expand=False)
     xw18_2["soc_code"] = xw18_2["soc_raw"].map(normalize_soc)
     xw18_2["isco_code"] = xw18_2["isco_raw"].map(normalize_isco)
     xw18_2["score"] = xw18_2["match_type"].map(MATCH_SCORE).fillna(0.6)
