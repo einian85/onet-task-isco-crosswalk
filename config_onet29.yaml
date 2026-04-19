@@ -21,7 +21,7 @@ random_seed: 42
 # w_soc_title = 0: title is prepended as text instead (legacy; include_soc_title must be true).
 include_soc_title: true
 # ── Query-side blend weights ───────────────────────────────────────────────────
-w_soc_title: 0.75    # separate SOC-title embedding weight
+w_soc_title: 0.5     # separate SOC-title embedding weight
 w_dwa: 0.0           # DWA items embedding weight (0 = DWAs unused)
 include_esco_skills: true
 # ── ISCO-08 standard (target-side) ────────────────────────────────────────────
@@ -29,8 +29,8 @@ isco_tasks_path: data/isco/ISCO-08 EN Structure and definitions.xlsx
 embedding_model: all-mpnet-base-v2
 normalize_embeddings: true
 # ── Target-side blend weights ──────────────────────────────────────────────────
-w_isco: 0.0          # ISCO share; 0 = pure ESCO
-w_isco_task: 0.0     # within ISCO: task items vs info text
+w_isco: 0.4          # ISCO share; 0 = pure ESCO
+w_isco_task: 0.6     # within ISCO: task items vs info text
 w_occ: 0.85          # occ share within ESCO component; skill = 1 - w_occ
 embedding_cache_dir: checkpoints
 faiss_index_type: FlatIP
