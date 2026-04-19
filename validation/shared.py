@@ -81,7 +81,7 @@ XW_ESCO_TO_SOC18 = DATA_DIR / "crosswalks" / "ESCO_to_ONET-SOC.xlsx"            
 XW_SOC18_TO_ESCO = DATA_DIR / "crosswalks" / "ONET_(Occupations)_0_updated.csv"  # ONET-SOC18 → ESCO/ISCO (ESCO Secretariat)
 
 # SOC10 crosswalks — use with ONET25 pipeline
-XW_ESCO_ONET_MHV  = DATA_DIR / "crosswalks" / "esco_onet_matysiaketal2024.csv"  # ESCO ↔ O*NET, semantic similarity (Matysiak et al. 2024)
+XW_ESCO_ONET_MHV  = DATA_DIR / "crosswalks" / "esco_onet_crosswalk.csv"  # ESCO ↔ O*NET, semantic similarity (Matysiak et al. 2024)
 XW_SOC10_ISCO_BLS = DATA_DIR / "crosswalks" / "isco_soc_crosswalk.xls"          # BLS official SOC10 → ISCO
 
 # ── HR survey path ────────────────────────────────────────────────────────────
