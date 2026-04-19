@@ -7,9 +7,18 @@ import re
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
 OUT_DIR = Path("results/publication")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _save_fig(fig: plt.Figure, png_path: Path) -> None:
+    """Save figure as PNG and as a PGF file (both in the same results directory)."""
+    fig.savefig(png_path, dpi=200, bbox_inches="tight")
+    pgf_path = png_path.with_suffix(".pgf")
+    try:
+        fig.savefig(str(pgf_path), format="pgf", bbox_inches="tight")
+    except Exception:
+        pass
 
 PLOT_STYLE = {
     "figure.figsize": (10, 6),
@@ -17,6 +26,18 @@ PLOT_STYLE = {
     "grid.alpha": 0.25,
     "axes.spines.top": False,
     "axes.spines.right": False,
+}
+
+DATASET_LABELS = {
+    "29.2-ID": "O*NET 29.2",
+    "25.0-ID": "O*NET 25.0",
+}
+
+CROSSWALK_LABELS = {
+    "XW18.1_esco_to_onetsoc": "ESCO-ONET-SOC (SOC18)",
+    "XW18.2_onetsoc_to_esco": "ONET-SOC-ESCO (SOC18)",
+    "XW10.1_esco_onet": "ESCO-ONET (MHV)",
+    "XW10.2_isco_soc": "BLS ISCO-SOC",
 }
 
 MATCH_SCORE = {
@@ -115,7 +136,7 @@ def top1_mapping(df: pd.DataFrame, score_col: str) -> pd.DataFrame:
 def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
     refs: dict[str, pd.DataFrame] = {}
 
-    xw10_1 = pd.read_csv("data/crosswalks/esco_onet_matysiaketal2024.csv")
+    xw10_1 = pd.read_csv("data/crosswalks/esco_onet_crosswalk.csv")
     xw10_1 = xw10_1.rename(columns={"onet_code": "soc_raw", "isco_code": "isco_raw", "semantic_similarity": "score"})
     xw10_1["soc_code"] = xw10_1["soc_raw"].map(normalize_soc)
     xw10_1["isco_code"] = xw10_1["isco_raw"].map(normalize_isco)
@@ -297,8 +318,8 @@ def build_overload_examples() -> pd.DataFrame:
         c4 = s4.groupby("iscoGroup", as_index=False).agg(tasks_s4=("task_id", "nunique"))
         c5 = s5.groupby("iscoGroup", as_index=False).agg(tasks_s5=("task_id", "nunique"))
         labels = (
-            s3.assign(occupationLabel=s3["occupationLabel"].astype(str).str.split("|").str[0])
-            .groupby("iscoGroup", as_index=False)["occupationLabel"]
+            s3.assign(isco_title=s3["isco_title"].astype(str).str.split("|").str[0])
+            .groupby("iscoGroup", as_index=False)["isco_title"]
             .first()
         )
         out = c3.merge(c4, on="iscoGroup", how="left").merge(c5, on="iscoGroup", how="left").merge(labels, on="iscoGroup", how="left")
@@ -340,7 +361,7 @@ def build_stage_task_examples() -> pd.DataFrame:
                         "task_text",
                         "candidate_rank",
                         "iscoGroup",
-                        "occupationLabel",
+                        "isco_title",
                         "similarity",
                         "kept_reason",
                         "topk_entropy",
@@ -375,9 +396,9 @@ def build_top1_mismatch_examples(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
         soc_titles = implied_links[["soc_code", "Title"]].dropna().drop_duplicates().rename(columns={"Title": "soc_title"})
         imp_occ = (
-            implied_links.groupby(["soc_code", "isco_code"], as_index=False)["occupationLabel"]
+            implied_links.groupby(["soc_code", "isco_code"], as_index=False)["isco_title"]
             .first()
-            .rename(columns={"isco_code": "isco_imp", "occupationLabel": "implied_occupation_label"})
+            .rename(columns={"isco_code": "isco_imp", "isco_title": "implied_occupation_label"})
         )
 
         merged = imp_top.merge(ref_top[["soc_code", "isco_ref", "ref_score"]], on="soc_code", how="inner")
@@ -415,15 +436,17 @@ def plot_top1_agreement(summary_df: pd.DataFrame) -> Path:
     plt.rcParams.update(PLOT_STYLE)
     fig, ax = plt.subplots(figsize=(12, 6))
     x = range(len(summary_df))
-    labels = [f"{d}\n{r}" for d, r in zip(summary_df["dataset_short"], summary_df["reference_crosswalk"])]
+    disp_d = summary_df["dataset_short"].map(DATASET_LABELS).fillna(summary_df["dataset_short"])
+    disp_r = summary_df["reference_crosswalk"].map(CROSSWALK_LABELS).fillna(summary_df["reference_crosswalk"])
+    labels = [f"{d}\n{r}" for d, r in zip(disp_d, disp_r)]
     ax.bar(x, summary_df["top1_agreement_share"], color="#35618f")
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels, rotation=35, ha="right")
     ax.set_ylabel("SOC-level Top-1 Agreement")
-    ax.set_title("Implied SOC->ISCO vs Institutional Crosswalks")
+    ax.set_title("Implied SOC\u2192ISCO vs Institutional Crosswalks")
     fig.tight_layout()
     out = OUT_DIR / "figure_occupation_top1_agreement.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    _save_fig(fig, out)
     plt.close(fig)
     return out
 

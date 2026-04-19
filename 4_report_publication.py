@@ -8,6 +8,17 @@ import pandas as pd
 
 from config import RunConfig, compute_run_id, get_code_version, load_yaml_or_json
 
+
+def _save_fig(fig: plt.Figure, png_path: Path) -> None:
+    """Save figure as PNG and as a PGF file (both in the same results directory)."""
+    fig.savefig(png_path, dpi=200, bbox_inches="tight")
+    pgf_path = png_path.with_suffix(".pgf")
+    try:
+        fig.savefig(str(pgf_path), format="pgf", bbox_inches="tight")
+    except Exception:
+        pass  # PGF save failed; PNG is still saved
+
+
 PLOT_STYLE = {
     "figure.figsize": (10, 6),
     "axes.grid": True,
@@ -29,6 +40,14 @@ SWEEP_PARAMS = [
 ]
 
 STAGE_ORDER = ["S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE", "S4_OVERLOAD", "S5_FINAL"]
+
+STAGE_LABELS = {
+    "S1_RETRIEVE": "S1: Retrieve",
+    "S2_TASK_FILTER": "S2: Task filter",
+    "S3_COVERAGE": "S3: Coverage",
+    "S4_OVERLOAD": "S4: Overload",
+    "S5_FINAL": "S5: Final",
+}
 
 DATASET_META = {
     "onet292_id": {
@@ -215,13 +234,15 @@ def plot_baseline_s5(summary_df: pd.DataFrame, out_dir: Path) -> Path:
         ("S5_mean_links_per_task", "Mean links/task"),
         ("S5_overloaded_task_share", "Overloaded task share"),
     ]
+    dataset_display = {"29.2-ID": "O*NET 29.2", "25.0-ID": "O*NET 25.0"}
+    disp_datasets = summary_df["dataset_short"].map(dataset_display).fillna(summary_df["dataset_short"])
     for ax, (col, title) in zip(axes.flatten(), metrics):
-        ax.bar(summary_df["dataset_short"], summary_df[col], color=["#35618f", "#4f8f5b", "#c77b30"])
+        ax.bar(disp_datasets, summary_df[col], color=["#35618f", "#4f8f5b", "#c77b30"])
         ax.set_title(title)
         ax.set_xlabel("")
     fig.tight_layout()
     path = out_dir / "figure_baseline_s5_comparison.png"
-    fig.savefig(path, dpi=200, bbox_inches="tight")
+    _save_fig(fig, path)
     plt.close(fig)
     return path
 
@@ -235,17 +256,18 @@ def plot_stage_progression(stage_df: pd.DataFrame, out_dir: Path) -> Path:
         ("mean_links_per_task", "Mean links/task"),
         ("share_tasks_in_overloaded_isco", "Overloaded task share"),
     ]
+    dataset_display = {"29.2-ID": "O*NET 29.2", "25.0-ID": "O*NET 25.0"}
     for dataset, group in stage_df.groupby("dataset_short"):
         group = group.sort_values("stage")
-        x = group["stage"].astype(str)
+        x = group["stage"].astype(str).map(STAGE_LABELS).fillna(group["stage"].astype(str))
         for ax, (col, title) in zip(axes.flatten(), metrics):
-            ax.plot(x, group[col], marker="o", label=dataset)
+            ax.plot(x, group[col], marker="o", label=dataset_display.get(dataset, dataset))
             ax.set_title(title)
             ax.tick_params(axis="x", rotation=30)
     axes[0, 0].legend(frameon=False)
     fig.tight_layout()
     path = out_dir / "figure_stage_progression.png"
-    fig.savefig(path, dpi=200, bbox_inches="tight")
+    _save_fig(fig, path)
     plt.close(fig)
     return path
 
@@ -284,7 +306,7 @@ def plot_sweep_tradeoff(out_dir: Path) -> Path | None:
     fig.colorbar(scatter, ax=ax, label="Selection score")
     fig.tight_layout()
     out = out_dir / "figure_sweep_tradeoff.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    _save_fig(fig, out)
     plt.close(fig)
     return out
 
@@ -315,7 +337,7 @@ def plot_parameter_sensitivity(out_dir: Path) -> Path | None:
         ax.axis("off")
     fig.tight_layout()
     out = out_dir / "figure_parameter_sensitivity.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    _save_fig(fig, out)
     plt.close(fig)
     return out
 

@@ -7,9 +7,34 @@ import pandas as pd
 
 
 RESULTS_DIR = Path("results/publication")
-GT_RESULTS_DIR = Path("ground_truth/results")
-TABLES_DIR = Path("paper/tex/tables")
+GT_RESULTS_DIR = Path("validation/results")
+TABLES_DIR = Path("results/publication/tables")
 TABLES_DIR.mkdir(parents=True, exist_ok=True)
+
+DATASET_LABELS = {
+    "29.2-ID": "O*NET 29.2",
+    "25.0-ID": "O*NET 25.0",
+}
+
+STAGE_LABELS = {
+    "S1_RETRIEVE": "S1: Retrieve",
+    "S2_TASK_FILTER": "S2: Task filter",
+    "S3_COVERAGE": "S3: Coverage",
+    "S4_OVERLOAD": "S4: Overload",
+    "S5_FINAL": "S5: Final",
+}
+
+CROSSWALK_LABELS = {
+    "XW18.1_esco_to_onetsoc": "ESCO-ONET-SOC (SOC18)",
+    "XW18.2_onetsoc_to_esco": "ONET-SOC-ESCO (SOC18)",
+    "XW10.1_esco_onet": "ESCO-ONET (MHV)",
+    "XW10.2_isco_soc": "BLS ISCO-SOC",
+}
+
+SOC_VERSION_LABELS = {
+    "soc10": "SOC 2010",
+    "soc18": "SOC 2018",
+}
 
 
 def _fmt_float(series: pd.Series, digits: int = 3) -> pd.Series:
@@ -35,6 +60,7 @@ def _baseline_s5(df: pd.DataFrame) -> pd.DataFrame:
             "S5_gini_tasks_per_isco",
         ]
     ].copy()
+    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
@@ -119,6 +145,8 @@ def _occupation_cmp(df: pd.DataFrame) -> pd.DataFrame:
             "n_shared_soc",
         ]
     ].copy()
+    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
+    out["reference_crosswalk"] = out["reference_crosswalk"].map(CROSSWALK_LABELS).fillna(out["reference_crosswalk"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
@@ -148,6 +176,9 @@ def _reference_internal(df: pd.DataFrame) -> pd.DataFrame:
             "top1_agreement_share",
         ]
     ].copy()
+    out["soc_version"] = out["soc_version"].map(SOC_VERSION_LABELS).fillna(out["soc_version"])
+    out["left_reference"] = out["left_reference"].map(CROSSWALK_LABELS).fillna(out["left_reference"])
+    out["right_reference"] = out["right_reference"].map(CROSSWALK_LABELS).fillna(out["right_reference"])
     out = out.rename(
         columns={
             "soc_version": "SOC version",
@@ -169,18 +200,19 @@ def _overload_examples(df: pd.DataFrame) -> pd.DataFrame:
         [
             "dataset_short",
             "iscoGroup",
-            "occupationLabel",
+            "isco_title",
             "tasks_s3",
             "tasks_s4",
             "tasks_s5",
             "pruned_in_s4",
         ]
     ].copy()
+    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
             "iscoGroup": "ISCO",
-            "occupationLabel": "Occupation label",
+            "isco_title": "Occupation label",
             "tasks_s3": "Tasks at S3",
             "tasks_s4": "Tasks at S4",
             "tasks_s5": "Tasks at S5",
@@ -205,6 +237,8 @@ def _mismatch_examples(df: pd.DataFrame) -> pd.DataFrame:
             "imp_support_share",
         ]
     ].copy()
+    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
+    out["reference_crosswalk"] = out["reference_crosswalk"].map(CROSSWALK_LABELS).fillna(out["reference_crosswalk"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
@@ -230,11 +264,13 @@ def _stage_examples(df: pd.DataFrame) -> pd.DataFrame:
             "task_id",
             "candidate_rank",
             "iscoGroup",
-            "occupationLabel",
+            "isco_title",
             "similarity",
             "kept_reason",
         ]
     ].copy()
+    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
+    out["stage_name"] = out["stage_name"].map(STAGE_LABELS).fillna(out["stage_name"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
@@ -242,7 +278,7 @@ def _stage_examples(df: pd.DataFrame) -> pd.DataFrame:
             "task_id": "Task ID",
             "candidate_rank": "Rank",
             "iscoGroup": "ISCO",
-            "occupationLabel": "Occupation label",
+            "isco_title": "Occupation label",
             "similarity": "Similarity",
             "kept_reason": "Reason",
         }
@@ -263,6 +299,8 @@ def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
             "share_tasks_in_overloaded_isco",
         ]
     ].copy()
+    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
+    out["stage"] = out["stage"].map(STAGE_LABELS).fillna(out["stage"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
@@ -282,8 +320,8 @@ def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
 
 def _gt01_validation_tex() -> str | None:
     """Chain crosswalk validation longtable from gt01 overall CSVs."""
-    p29 = GT_RESULTS_DIR / "gt01_onet29_overall.csv"
-    p25 = GT_RESULTS_DIR / "gt01_onet25_overall.csv"
+    p29 = GT_RESULTS_DIR / "chain_eval_onet29_overall.csv"
+    p25 = GT_RESULTS_DIR / "chain_eval_onet25_overall.csv"
     if not p29.exists() or not p25.exists():
         return None
     df29 = pd.read_csv(p29)
@@ -295,6 +333,8 @@ def _gt01_validation_tex() -> str | None:
             .replace("&", r"\&").replace("$", r"\$")
             .replace(" alone", "")
             .replace(" (semantic, less independent)", "")
+            .replace("∪", r"$\cup$")
+            .replace("∩", r"$\cap$")
         )
         return (
             f"    {label} & {r['pct_in_crosswalk']:.1f}"
@@ -342,60 +382,6 @@ Scenario & Cov.\ & Exact & Sub- & Major \\
 """
 
 
-def _gt02_hr_tex() -> str | None:
-    """HR practitioner survey table from gt02 CSVs."""
-    p_detail  = GT_RESULTS_DIR / "gt02_hr_task_detail.csv"
-    p_summary = GT_RESULTS_DIR / "gt02_hr_summary.csv"
-    if not p_detail.exists() or not p_summary.exists():
-        return None
-    detail  = pd.read_csv(p_detail)
-    summary = pd.read_csv(p_summary)
-
-    # Summary header line
-    s = summary.iloc[0]
-    summary_line = (
-        f"Overall: n={int(s['n_tasks'])}, "
-        f"coverage={s['pct_in_crosswalk']:.1f}\\%, "
-        f"exact={s['pct_exact']:.1f}\\%, "
-        f"sub-major={s['pct_sub_major']:.1f}\\%, "
-        f"major-group={s['pct_major_group']:.1f}\\%"
-    )
-
-    def _trunc(text: str, n: int = 45) -> str:
-        text = str(text).replace("&", r"\&").replace("%", r"\%").replace("_", r"\_")
-        return text[:n] + r"\ldots{}" if len(text) > n else text
-
-    def _yn(val: object) -> str:
-        return "Yes" if str(val).strip().lower() in ("true", "yes", "1") else "No"
-
-    rows = []
-    for _, r in detail.iterrows():
-        survey_num = str(r['survey_task_num']).replace("_", r"\_")
-        rows.append(
-            f"    {_trunc(r['task_text'])} & {int(r['task_id'])} & {survey_num}"
-            f" & {int(r['isco_pred'])} & {float(r['similarity']):.2f}"
-            f" & {_yn(r['match_exact'])} & {_yn(r['match_sub_major'])} \\\\"
-        )
-
-    return r"""\begin{table}[H]
-\centering
-\caption{HR practitioner survey validation: pipeline predictions for recruitment tasks.}
-\label{tab:gt02-hr}
-\begin{small}
-\begin{tabular}{p{5.5cm}rrp{2.2cm}rcc}
-\toprule
-Task text (truncated) & Task & Survey & ISCO & Similarity & Exact & Sub- \\
-                      & ID   & Num    & pred &            & match & major \\
-\midrule
-\multicolumn{7}{l}{\emph{""" + summary_line + r"""}} \\
-\midrule
-""" + "\n".join(rows) + r"""
-\bottomrule
-\end{tabular}
-\end{small}
-\end{table}
-"""
-
 
 TABLE_SPECS: list[tuple[str, str, Callable[[pd.DataFrame], pd.DataFrame]]] = [
     ("table_baseline_s5_summary.csv", "table_baseline_s5_summary.tex", _baseline_s5),
@@ -424,10 +410,9 @@ def main() -> None:
         _write_tex(out_df, out_path)
         written.append(out_path)
 
-    # Ground-truth tables from ground_truth/results/
+    # Ground-truth tables from validation/results/
     for generator, tex_name in [
         (_gt01_validation_tex, "table_gt01_validation.tex"),
-        (_gt02_hr_tex,         "table_gt02_hr.tex"),
     ]:
         content = generator()
         if content is None:
