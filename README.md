@@ -117,7 +117,7 @@ Source data is not included in this repository. Download and place files as foll
 
 | Source | File | Save to |
 |--------|------|---------|
-| Matysiak et al. (2024) ESCO–O\*NET — https://doi.org/10.5281/ZENODO.12699781 | `esco_onet_matysiaketal2024.csv` | `data/crosswalks/` |
+| Matysiak et al. (2024) ESCO–O\*NET — https://github.com/LabFam/MHV_2024/tree/main/Data | `esco_onet_crosswalk.csv` | `data/crosswalks/` |
 | BLS SOC 2010 ↔ ISCO-08 — https://www.bls.gov/soc/isco_soc_crosswalk.xls | `isco_soc_crosswalk.xls` | `data/crosswalks/` |
 | O\*NET Center ESCO → O\*NET-SOC — https://www.onetcenter.org/crosswalks/esco/ESCO_to_ONET-SOC.xlsx | `ESCO_to_ONET-SOC.xlsx` | `data/crosswalks/` |
 | ESCO Secretariat O\*NET-SOC → ESCO — https://esco.ec.europa.eu/en/use-esco/other-crosswalks | `ONET_(Occupations)_0_updated.csv` | `data/crosswalks/` |
@@ -210,7 +210,7 @@ Both crosswalk CSVs share the same schema. Each row is one task–ISCO candidate
 | `task_text` | Task statement text |
 | `soc_code` | 6-digit SOC code |
 | `iscoGroup` | 4-digit ISCO-08 unit group |
-| `occupationLabel` | ISCO occupation label(s) |
+| `isco_title` | ISCO occupation label |
 | `similarity` | Cosine similarity score |
 | `stage` | Pipeline stage (`S5_FINAL` = kept after all filters) |
 | `run_id` | Hash identifying the pipeline run |
