@@ -140,7 +140,7 @@ def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
     xw18_1["score"] = 1.0
     refs["XW18.1_esco_to_onetsoc"] = xw18_1[["soc_code", "isco_code", "score"]].dropna().drop_duplicates()
 
-    xw18_2 = pd.read_csv("data/crosswalks/ONET_(Occupations)_0_updated.csv")
+    xw18_2 = pd.read_csv("data/crosswalks/ONET_(Occupations)_0_updated.csv", skiprows=16)
     xw18_2 = xw18_2.rename(columns={"O*NET Id": "soc_raw", "Type of Match": "match_type"})
     # Extract 4-digit ISCO code from URI (e.g. ".../esco/isco/C2512"); skip ESCO occupation URIs
     xw18_2["isco_raw"] = xw18_2["ESCO or ISCO URI"].where(

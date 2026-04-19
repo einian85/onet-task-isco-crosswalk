@@ -146,7 +146,8 @@ def load_soc18_crosswalks() -> dict[str, pd.DataFrame]:
     )
 
     # XW18.2: ONET-SOC → ESCO/ISCO (CSV; ISCO code extracted from URI, e.g. ".../isco/C2512")
-    raw2 = clean_names(pd.read_csv(XW_SOC18_TO_ESCO))
+    # The file has a 16-row metadata preamble before the actual column header row.
+    raw2 = clean_names(pd.read_csv(XW_SOC18_TO_ESCO, skiprows=16))
     raw2["isco_code_raw"] = (
         raw2["esco_or_isco_uri"]
         .where(raw2["esco_or_isco_uri"].str.contains("/isco/", na=False))

@@ -79,7 +79,7 @@ m29 = cw29_best.merge(tasks29[['Task ID','soc']].rename(columns={'Task ID':'task
                       on='task_id', how='inner')
 m29['isco_major'] = m29['iscoGroup'].str[0]
 
-xw2 = pd.read_csv(BASE / 'data/crosswalks/ONET_(Occupations)_0_updated.csv')
+xw2 = pd.read_csv(BASE / 'data/crosswalks/ONET_(Occupations)_0_updated.csv', skiprows=16)
 xw2['soc'] = xw2['O*NET Id'].apply(norm_soc)
 # Extract 4-digit ISCO code from URI (e.g. ".../isco/C2512"); skip ESCO occupation URIs
 xw2['isco'] = (xw2['ESCO or ISCO URI']
