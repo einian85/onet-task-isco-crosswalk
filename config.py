@@ -73,9 +73,16 @@ class RunConfig:
     lowconf_gap_threshold: float = 0.01
     lowconf_entropy_threshold: float = 1.2
     limit_tasks: int | None = None
+    slim_output: bool = False   # sweep mode: skip stage CSVs and final crosswalk write
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def to_hash_dict(self) -> dict[str, Any]:
+        """Dict used for run-ID hashing — excludes output-mode flags."""
+        d = self.to_dict()
+        d.pop("slim_output", None)
+        return d
 
 
 KNOWN_FIELDS = {f.name for f in fields(RunConfig)}
@@ -187,7 +194,7 @@ def get_code_version() -> str:
 
 
 def compute_run_id(cfg: RunConfig, code_version: str, data_version: str) -> str:
-    return stable_hash({"config": cfg.to_dict(), "code_version": code_version, "data_version": data_version})[:16]
+    return stable_hash({"config": cfg.to_hash_dict(), "code_version": code_version, "data_version": data_version})[:16]
 
 
 
