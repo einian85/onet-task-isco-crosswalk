@@ -370,10 +370,10 @@ Scenario & Cov.\ & Exact & Sub- & Major \\
 \endfoot
 \bottomrule
 \endlastfoot
-\emph{SOC18 (O*NET 29.2-ID)} \\[2pt]
+\emph{SOC 2018 (O*NET 29.2)} \\[2pt]
 """ + rows29 + r"""
 \midrule
-\emph{SOC10 (O*NET 25.0-ID)} \\[2pt]
+\emph{SOC 2010 (O*NET 25.0)} \\[2pt]
 """ + rows25 + r"""
 \multicolumn{5}{l}{\footnotesize $^{a}$Less independent: derived via the same semantic similarity approach as the pipeline.}\\
 \end{longtable}
