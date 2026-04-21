@@ -12,13 +12,13 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _save_fig(fig: plt.Figure, png_path: Path) -> None:
-    """Save figure as PNG and as a PGF file (both in the same results directory)."""
+    """Save figure as PNG, PDF and PGF (all in the same results directory)."""
     fig.savefig(png_path, dpi=200, bbox_inches="tight")
-    pgf_path = png_path.with_suffix(".pgf")
-    try:
-        fig.savefig(str(pgf_path), format="pgf", bbox_inches="tight")
-    except Exception:
-        pass
+    for suffix, fmt in [(".pdf", "pdf"), (".pgf", "pgf")]:
+        try:
+            fig.savefig(str(png_path.with_suffix(suffix)), format=fmt, bbox_inches="tight")
+        except Exception:
+            pass
 
 PLOT_STYLE = {
     "figure.figsize": (10, 6),
