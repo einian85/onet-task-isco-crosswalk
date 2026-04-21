@@ -29,34 +29,8 @@ GT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # ── Pipeline output paths ─────────────────────────────────────────────────────
 # Two crosswalk variants derived from different O*NET releases.
 # NEVER mix task IDs across releases: O*NET ≤25.0 uses SOC10, ≥25.1 uses SOC18.
-PIPELINE_ONET29      = PROJECT_DIR / "output" / "ONET29_task_to_ISCO_crosswalk.csv"       # 29.2 / SOC18 (baseline w=0.00)
-PIPELINE_ONET29_WT10 = PROJECT_DIR / "output" / "ONET29_wt10_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.10)
-PIPELINE_ONET29_WT20 = PROJECT_DIR / "output" / "ONET29_wt20_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.20)
-PIPELINE_ONET29_WT30 = PROJECT_DIR / "output" / "ONET29_wt30_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.30)
-PIPELINE_ONET29_WT40 = PROJECT_DIR / "output" / "ONET29_wt40_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.40)
-PIPELINE_ONET29_WT50 = PROJECT_DIR / "output" / "ONET29_wt50_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.50)
-PIPELINE_ONET29_WT60 = PROJECT_DIR / "output" / "ONET29_wt60_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.60)
-PIPELINE_ONET29_WT65 = PROJECT_DIR / "output" / "ONET29_wt65_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.65)
-PIPELINE_ONET29_WT70 = PROJECT_DIR / "output" / "ONET29_wt70_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.70)
-PIPELINE_ONET29_WT75 = PROJECT_DIR / "output" / "ONET29_wt75_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.75)
-PIPELINE_ONET29_WT80 = PROJECT_DIR / "output" / "ONET29_wt80_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.80)
-PIPELINE_ONET29_WT85 = PROJECT_DIR / "output" / "ONET29_wt85_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.85)
-PIPELINE_ONET29_WT90 = PROJECT_DIR / "output" / "ONET29_wt90_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.90)
-PIPELINE_ONET29_WT99 = PROJECT_DIR / "output" / "ONET29_wt99_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18 (w_soc_title=0.99)
-PIPELINE_ONET25      = PROJECT_DIR / "output" / "ONET25_task_to_ISCO_crosswalk.csv"       # 25.0 / SOC10 (baseline w=0.00)
-PIPELINE_ONET25_WT10 = PROJECT_DIR / "output" / "ONET25_wt10_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.10)
-PIPELINE_ONET25_WT20 = PROJECT_DIR / "output" / "ONET25_wt20_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.20)
-PIPELINE_ONET25_WT30 = PROJECT_DIR / "output" / "ONET25_wt30_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.30)
-PIPELINE_ONET25_WT40 = PROJECT_DIR / "output" / "ONET25_wt40_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.40)
-PIPELINE_ONET25_WT50 = PROJECT_DIR / "output" / "ONET25_wt50_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.50)
-PIPELINE_ONET25_WT60 = PROJECT_DIR / "output" / "ONET25_wt60_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.60)
-PIPELINE_ONET25_WT65 = PROJECT_DIR / "output" / "ONET25_wt65_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.65)
-PIPELINE_ONET25_WT70 = PROJECT_DIR / "output" / "ONET25_wt70_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.70)
-PIPELINE_ONET25_WT75 = PROJECT_DIR / "output" / "ONET25_wt75_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.75)
-PIPELINE_ONET25_WT80 = PROJECT_DIR / "output" / "ONET25_wt80_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.80)
-PIPELINE_ONET25_WT85 = PROJECT_DIR / "output" / "ONET25_wt85_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.85)
-PIPELINE_ONET25_WT90 = PROJECT_DIR / "output" / "ONET25_wt90_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.90)
-PIPELINE_ONET25_WT99 = PROJECT_DIR / "output" / "ONET25_wt99_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10 (w_soc_title=0.99)
+PIPELINE_ONET29 = PROJECT_DIR / "output" / "ONET29_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18
+PIPELINE_ONET25 = PROJECT_DIR / "output" / "ONET25_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10
 
 # ── O*NET task statement paths ────────────────────────────────────────────────
 ONET_TASKS_29   = DATA_DIR / "onet" / "29_2" / "Task Statements.xlsx"
