@@ -8,6 +8,25 @@ import pandas as pd
 
 from config import RunConfig
 
+_TASK_TOTAL_CACHE: dict[tuple[str, bool, int | None], int] = {}
+
+
+def _task_universe_size(cfg: RunConfig) -> int:
+    key = (str(Path(cfg.onet_tasks_path)), bool(cfg.use_task_ids), cfg.limit_tasks)
+    cached = _TASK_TOTAL_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    df_tasks = pd.read_excel(cfg.onet_tasks_path, usecols=["Task ID", "Task"])
+    if cfg.limit_tasks is not None:
+        df_tasks = df_tasks.head(cfg.limit_tasks).copy()
+    if cfg.use_task_ids:
+        total = int(df_tasks["Task ID"].astype(str).nunique())
+    else:
+        total = int(df_tasks["Task"].astype(str).drop_duplicates().shape[0])
+    _TASK_TOTAL_CACHE[key] = total
+    return total
+
 
 
 def compute_gini(counts: np.ndarray) -> float:
@@ -49,11 +68,12 @@ def compute_retrieval_confidence(df_s1: pd.DataFrame, cfg: RunConfig) -> pd.Data
 
 
 def compute_unsup_metrics(df_stage: pd.DataFrame, cfg: RunConfig, universe_isco: set[str], stage_name: str) -> dict[str, Any]:
+    total_tasks = _task_universe_size(cfg)
     metrics: dict[str, Any] = {"stage": stage_name}
     if df_stage.empty:
         metrics.update(
             {
-                "n_tasks_total": 0,
+                "n_tasks_total": total_tasks,
                 "n_tasks_with_any_link": 0,
                 "mean_links_per_task": 0.0,
                 "median_links_per_task": 0.0,
@@ -93,7 +113,7 @@ def compute_unsup_metrics(df_stage: pd.DataFrame, cfg: RunConfig, universe_isco:
 
     metrics.update(
         {
-            "n_tasks_total": int(task_counts.shape[0]),
+            "n_tasks_total": total_tasks,
             "n_tasks_with_any_link": int(task_counts.shape[0]),
             "mean_links_per_task": float(task_counts.mean()),
             "median_links_per_task": float(task_counts.median()),
@@ -111,7 +131,7 @@ def compute_unsup_metrics(df_stage: pd.DataFrame, cfg: RunConfig, universe_isco:
             "median_similarity_retained": float(df["similarity"].median()),
             "p10_similarity_retained": float(df["similarity"].quantile(0.10)),
             "n_overloaded_isco": int(len(overloaded)),
-            "share_tasks_in_overloaded_isco": float(tasks_in_overloaded / task_counts.shape[0]) if task_counts.shape[0] else 0.0,
+            "share_tasks_in_overloaded_isco": float(tasks_in_overloaded / total_tasks) if total_tasks else 0.0,
         }
     )
 

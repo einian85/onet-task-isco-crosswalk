@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import gc
 import hashlib
 import json
@@ -28,6 +29,17 @@ from config import (
 from metrics_unsup import compute_unsup_metrics, append_metrics_long
 
 STAGES = ("S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE", "S4_OVERLOAD", "S5_FINAL")
+
+# In-process memory cache for Tier-1 embedding arrays.
+# Key: str(raw_checkpoint_path). All sweep variants share the same raw embeddings,
+# so after the first variant loads the pickle files every subsequent call is free.
+_EMBEDDING_MEM_CACHE: dict[str, "np.ndarray"] = {}
+
+# In-process cache for the SentenceTransformer model object.
+# Key: model name string.  Loading the model hits HuggingFace Hub on every call
+# in newer transformers versions; caching it here avoids repeated network calls
+# and prevents segfaults from the offline/cached code path.
+_MODEL_CACHE: dict[str, "SentenceTransformer"] = {}
 
 
 def ensure_dir(path: str | Path) -> Path:
@@ -282,6 +294,14 @@ def embed_texts(
 ):
     """Embed texts using the shared Tier-1 weight-independent cache."""
     path = raw_checkpoint_path(cfg, cache_name)
+    cache_key = str(path)
+
+    # Fast path: already in process memory (subsequent sweep variants)
+    if cache_key in _EMBEDDING_MEM_CACHE:
+        emb = _EMBEDDING_MEM_CACHE[cache_key]
+        print(f"{cache_name} shape: {emb.shape} (cached)")
+        return emb
+
     emb = None
     if path.exists():
         print(f"Loading checkpoint: {path}")
@@ -296,6 +316,7 @@ def embed_texts(
             pickle.dump(emb, f, protocol=pickle.HIGHEST_PROTOCOL)
         print(f"Saved checkpoint: {path}")
     print(f"{cache_name} shape: {emb.shape}")
+    _EMBEDDING_MEM_CACHE[cache_key] = emb
     gc.collect()
     return emb
 
@@ -379,7 +400,9 @@ def build_embeddings(
     All data is averaged to the appropriate level (per-task for DWAs,
     per-ISCO-group for ESCO/ISCO) before blending.
     """
-    model = SentenceTransformer(cfg.embedding_model)
+    if cfg.embedding_model not in _MODEL_CACHE:
+        _MODEL_CACHE[cfg.embedding_model] = SentenceTransformer(cfg.embedding_model)
+    model = _MODEL_CACHE[cfg.embedding_model]
     all_task_ids = df_tasks["task_id"].astype(str).tolist()
     all_isco_codes = df_isco_groups["isco_code"].tolist()
 
@@ -476,6 +499,7 @@ def _retrieve_raw(
     indices,
     cfg: RunConfig,
 ) -> pd.DataFrame:
+    slim = cfg.slim_output
     rows: list[dict[str, Any]] = []
     for task_idx in range(len(df_tasks)):
         task = df_tasks.iloc[task_idx]
@@ -483,22 +507,19 @@ def _retrieve_raw(
         sim1 = sims[0] if sims else float("nan")
         sim2 = sims[1] if len(sims) > 1 else sim1
         simk = sims[-1] if sims else sim1
+        best_target = str(df_isco_groups.iloc[indices[task_idx][0]]["isco_code"]) if len(indices[task_idx]) else ""
         scaled = np.exp(np.array(sims, dtype=float) / cfg.softmax_temperature)
         probs = scaled / scaled.sum() if scaled.sum() else np.array([1.0])
         entropy = float(-(probs * np.log(probs + 1e-12)).sum())
-        best_target = str(df_isco_groups.iloc[indices[task_idx][0]]["isco_code"]) if len(indices[task_idx]) else ""
         for raw_rank, isco_idx in enumerate(indices[task_idx], start=1):
             isco_row = df_isco_groups.iloc[isco_idx]
             isco_code = str(isco_row["isco_code"])
-            rows.append({
+            row: dict[str, Any] = {
                 "task_key": task["task_key"],
                 "task_id": task["task_id"],
-                "task_text": task["task_text"],
-                "task_text_hash": task["task_text_hash"],
                 "candidate_rank": raw_rank,
                 "target_id": isco_code,
                 "iscoGroup": isco_code,
-                "isco_title": str(isco_row["title_en"]),
                 "similarity": float(distances[task_idx, raw_rank - 1]),
                 "task_best_similarity": sim1,
                 "task_best_target": best_target,
@@ -506,9 +527,21 @@ def _retrieve_raw(
                 "gap_1_k": sim1 - simk,
                 "topk_entropy": entropy,
                 "is_best": raw_rank == 1,
-                "kept_reason": "retrieved",
-            })
-    return pd.DataFrame(rows)
+            }
+            if not slim:
+                # Decorative columns: not needed for metrics or filtering.
+                row["task_text"] = task["task_text"]
+                row["task_text_hash"] = task["task_text_hash"]
+                row["isco_title"] = str(isco_row["title_en"])
+                row["kept_reason"] = "retrieved"
+            rows.append(row)
+    # Build column-by-column to avoid pandas type-inference overhead (which
+    # allocates large complex128 scratch arrays on fragmented heaps).
+    if not rows:
+        return pd.DataFrame()
+    gc.collect()
+    cols = list(rows[0].keys())
+    return pd.DataFrame({col: [r[col] for r in rows] for col in cols})
 
 
 def faiss_retrieve(
@@ -535,12 +568,10 @@ def faiss_retrieve(
 def _dedupe_targets(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df.copy()
-    grouped = df.groupby(["task_id", "target_id"], as_index=False).agg(
+    # Core columns always present; optional columns only in full (non-slim) mode.
+    core_agg = dict(
         task_key=("task_key", "first"),
-        task_text=("task_text", "first"),
-        task_text_hash=("task_text_hash", "first"),
         iscoGroup=("iscoGroup", "first"),
-        isco_title=("isco_title", "first"),
         similarity=("similarity", "max"),
         task_best_similarity=("task_best_similarity", "first"),
         task_best_target=("task_best_target", "first"),
@@ -548,8 +579,16 @@ def _dedupe_targets(df: pd.DataFrame) -> pd.DataFrame:
         gap_1_k=("gap_1_k", "first"),
         topk_entropy=("topk_entropy", "first"),
         is_best=("is_best", "max"),
+    )
+    # Decorative columns: present only in full (non-slim) mode.
+    optional_agg = dict(
+        task_text=("task_text", "first"),
+        task_text_hash=("task_text_hash", "first"),
+        isco_title=("isco_title", "first"),
         kept_reason=("kept_reason", "first"),
     )
+    agg = {k: v for k, v in {**core_agg, **optional_agg}.items() if v[0] in df.columns}
+    grouped = df.groupby(["task_id", "target_id"], as_index=False).agg(**agg)
     grouped = grouped.sort_values(
         ["task_id", "similarity", "target_id"], ascending=[True, False, True]
     ).reset_index(drop=True)
@@ -673,37 +712,28 @@ def _metrics_dir(cfg: RunConfig) -> Path:
     return ensure_dir(Path(cfg.output_dir) / "metrics")
 
 
+_FULL_STAGE_COLS = [
+    "run_id", "stage", "task_key", "task_id", "task_text", "candidate_rank",
+    "iscoGroup", "target_id", "isco_title", "similarity", "task_best_similarity",
+    "task_best_target", "gap_1_2", "gap_1_k", "topk_entropy", "is_best",
+    "kept_reason", "task_text_hash",
+]
+
+
 def _standardize_stage(df: pd.DataFrame, stage: str, run_id: str) -> pd.DataFrame:
     out = df.copy()
     out["run_id"] = run_id
     out["stage"] = stage
-    cols = [
-        "run_id",
-        "stage",
-        "task_key",
-        "task_id",
-        "task_text",
-        "candidate_rank",
-        "iscoGroup",
-        "target_id",
-        "isco_title",
-        "similarity",
-        "task_best_similarity",
-        "task_best_target",
-        "gap_1_2",
-        "gap_1_k",
-        "topk_entropy",
-        "is_best",
-        "kept_reason",
-        "task_text_hash",
-    ]
-    for col in cols:
+    for col in _FULL_STAGE_COLS:
         if col not in out.columns:
             out[col] = pd.NA
-    return out[cols]
+    return out[_FULL_STAGE_COLS]
 
 
 def _write_stage(df: pd.DataFrame, stage: str, run_id: str, cfg: RunConfig) -> Path:
+    if cfg.slim_output:
+        # In slim mode skip writing stage CSVs; return a placeholder path.
+        return _stage_output_dir(cfg, run_id) / stage
     return write_table(_standardize_stage(df, stage, run_id), _stage_output_dir(cfg, run_id) / stage)
 
 
@@ -792,10 +822,11 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
     metrics_long_df.to_csv(metrics_csv_path, index=False)
     append_metrics_long(metrics_long_df, Path(cfg.output_dir) / "metrics" / "metrics_long.csv")
 
-    final_df = _standardize_stage(s5, "S5_FINAL", run_id)
-    ensure_dir(Path(cfg.final_output_path).parent)
-    final_df.to_csv(cfg.final_output_path, index=False)
-    print(f"Saved final crosswalk: {cfg.final_output_path}")
+    if not cfg.slim_output:
+        final_df = _standardize_stage(s5, "S5_FINAL", run_id)
+        ensure_dir(Path(cfg.final_output_path).parent)
+        final_df.to_csv(cfg.final_output_path, index=False)
+        print(f"Saved final crosswalk: {cfg.final_output_path}")
 
     manifest_path = save_manifest(
         run_dir,
@@ -815,12 +846,20 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
         "manifest_path": str(manifest_path),
         "final_output_path": cfg.final_output_path,
         "config": cfg,
+        "s5": s5,   # in-memory S5 DataFrame (used by sweep for comparison metrics)
     }
 
 
-def main() -> None:
-    cfg_path = Path("config.yaml")
-    result = run_pipeline(cfg_path)
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Run the O*NET to ISCO pipeline.")
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default=str(Path(__file__).resolve().with_name("config_onet29.yaml")),
+        help="Path to a YAML or JSON run config. Defaults to config_onet29.yaml.",
+    )
+    args = parser.parse_args(argv)
+    result = run_pipeline(Path(args.config))
     print(f"Run complete: {result['run_id']}")
 
 

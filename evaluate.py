@@ -162,7 +162,7 @@ def evaluate_stage(preds: pd.DataFrame, gt: pd.DataFrame, config: RunConfig, sta
 
 def evaluate_run(run_id: str, config: RunConfig, ground_truth_path: str | Path) -> pd.DataFrame:
     gt = load_ground_truth(ground_truth_path)
-    root = Path(config.results_dir)
+    root = Path(config.output_dir)
     metric_dir = root / "metrics" / run_id
     metric_dir.mkdir(parents=True, exist_ok=True)
 

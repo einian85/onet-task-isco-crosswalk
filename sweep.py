@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -245,17 +246,42 @@ def run_sweep(configs: list[RunConfig], baseline_run_id: str | None = None) -> p
     return results
 
 
-def main(mode: str = "oat") -> None:
-    baseline_cfg = RunConfig(**load_yaml_or_json("config.yaml"))
-    if mode == "oat":
-        sweep_spec = load_yaml_or_json("sweep_oat.yaml")
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Run a parameter sweep.")
+    parser.add_argument(
+        "mode",
+        nargs="?",
+        choices=["oat", "random"],
+        default="oat",
+        help="Sweep mode. Defaults to oat.",
+    )
+    parser.add_argument(
+        "--config",
+        default=str(Path(__file__).resolve().with_name("config_onet29.yaml")),
+        help="Path to the baseline YAML or JSON config. Defaults to config_onet29.yaml.",
+    )
+    parser.add_argument(
+        "--spec",
+        default=None,
+        help="Optional path to a sweep spec. Defaults to sweep/sweep_<mode>.yaml.",
+    )
+    args = parser.parse_args(argv)
+
+    baseline_cfg = RunConfig(**load_yaml_or_json(args.config))
+    spec_path = Path(args.spec) if args.spec else Path(__file__).resolve().with_name("sweep") / f"sweep_{args.mode}.yaml"
+    sweep_spec = load_yaml_or_json(spec_path)
+    if args.mode == "oat":
         configs = generate_oat_configs(baseline_cfg, sweep_spec)
     else:
-        sweep_spec = load_yaml_or_json("sweep_random.yaml")
-        configs = generate_random_configs(baseline_cfg, sweep_spec, n=int(sweep_spec.get("n", 10)), seed=int(sweep_spec.get("seed", 42)))
+        configs = generate_random_configs(
+            baseline_cfg,
+            sweep_spec,
+            n=int(sweep_spec.get("n", 10)),
+            seed=int(sweep_spec.get("seed", 42)),
+        )
     results = run_sweep(configs)
     print(results.head().to_string(index=False))
 
 
 if __name__ == "__main__":
-    main("oat")
+    main()
