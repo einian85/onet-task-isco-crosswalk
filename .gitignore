@@ -39,6 +39,7 @@ __pycache__/
 .DS_Store
 .claude/
 Thumbs.db
+LOCAL_ENV.md
 
 # Sweep outputs (not part of publication pipeline)
 output/*_wt*
@@ -46,6 +47,10 @@ output/*_isco_wsoc*
 output/sweep_*/
 output/ONET25txt_*
 output/archive/
+
+
+output/candidates/
+
 
 # Keep the two production crosswalks
 !output/ONET29_task_to_ISCO_crosswalk.csv
