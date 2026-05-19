@@ -5,6 +5,10 @@ from typing import Callable
 
 import pandas as pd
 
+CROSSWALK_PATH = Path("output/ONET29_task_to_ISCO_crosswalk.csv")
+ONET_TASKS_PATH = Path("data/onet/29_2/Task Statements.xlsx")
+ONET_DWA_PATH = Path("data/onet/29_2/Tasks to DWAs.xlsx")
+
 
 RESULTS_DIR = Path("results/publication")
 GT_RESULTS_DIR = Path("validation/results")
@@ -134,17 +138,18 @@ def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _occupation_cmp(df: pd.DataFrame) -> pd.DataFrame:
-    out = df[
-        [
-            "dataset_short",
-            "reference_crosswalk",
-            "pair_precision_vs_ref",
-            "pair_recall_vs_ref",
-            "pair_f1_vs_ref",
-            "top1_agreement_share",
-            "n_shared_soc",
-        ]
-    ].copy()
+    cols = [
+        "dataset_short",
+        "reference_crosswalk",
+        "pair_precision_vs_ref",
+        "pair_recall_vs_ref",
+        "pair_f1_vs_ref",
+        "top1_agreement_share",
+        "top1_sub_major_share",
+        "top1_major_group_share",
+        "n_shared_soc",
+    ]
+    out = df[[c for c in cols if c in df.columns]].copy()
     out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
     out["reference_crosswalk"] = out["reference_crosswalk"].map(CROSSWALK_LABELS).fillna(out["reference_crosswalk"])
     out = out.rename(
@@ -154,28 +159,32 @@ def _occupation_cmp(df: pd.DataFrame) -> pd.DataFrame:
             "pair_precision_vs_ref": "Pair precision",
             "pair_recall_vs_ref": "Pair recall",
             "pair_f1_vs_ref": "Pair F1",
-            "top1_agreement_share": "SOC top-1 agreement",
+            "top1_agreement_share": "In-set (4-digit)",
+            "top1_sub_major_share": "In-set (2-digit)",
+            "top1_major_group_share": "In-set (1-digit)",
             "n_shared_soc": "Shared SOC n",
         }
     )
-    for col in ["Pair precision", "Pair recall", "Pair F1", "SOC top-1 agreement"]:
-        out[col] = _fmt_float(out[col], 3)
+    for col in ["Pair precision", "Pair recall", "Pair F1", "In-set (4-digit)", "In-set (2-digit)", "In-set (1-digit)"]:
+        if col in out.columns:
+            out[col] = _fmt_float(out[col], 3)
     out["Shared SOC n"] = pd.to_numeric(out["Shared SOC n"], errors="coerce").fillna(0).astype(int)
     return out
 
 
 def _reference_internal(df: pd.DataFrame) -> pd.DataFrame:
-    out = df[
-        [
-            "soc_version",
-            "left_reference",
-            "right_reference",
-            "pair_precision_vs_ref",
-            "pair_recall_vs_ref",
-            "pair_f1_vs_ref",
-            "top1_agreement_share",
-        ]
-    ].copy()
+    cols = [
+        "soc_version",
+        "left_reference",
+        "right_reference",
+        "pair_precision_vs_ref",
+        "pair_recall_vs_ref",
+        "pair_f1_vs_ref",
+        "top1_agreement_share",
+        "top1_sub_major_share",
+        "top1_major_group_share",
+    ]
+    out = df[[c for c in cols if c in df.columns]].copy()
     out["soc_version"] = out["soc_version"].map(SOC_VERSION_LABELS).fillna(out["soc_version"])
     out["left_reference"] = out["left_reference"].map(CROSSWALK_LABELS).fillna(out["left_reference"])
     out["right_reference"] = out["right_reference"].map(CROSSWALK_LABELS).fillna(out["right_reference"])
@@ -187,11 +196,14 @@ def _reference_internal(df: pd.DataFrame) -> pd.DataFrame:
             "pair_precision_vs_ref": "Pair precision",
             "pair_recall_vs_ref": "Pair recall",
             "pair_f1_vs_ref": "Pair F1",
-            "top1_agreement_share": "Top-1 agreement",
+            "top1_agreement_share": "In-set (4-digit)",
+            "top1_sub_major_share": "In-set (2-digit)",
+            "top1_major_group_share": "In-set (1-digit)",
         }
     )
-    for col in ["Pair precision", "Pair recall", "Pair F1", "Top-1 agreement"]:
-        out[col] = _fmt_float(out[col], 3)
+    for col in ["Pair precision", "Pair recall", "Pair F1", "In-set (4-digit)", "In-set (2-digit)", "In-set (1-digit)"]:
+        if col in out.columns:
+            out[col] = _fmt_float(out[col], 3)
     return out
 
 
@@ -232,25 +244,31 @@ def _mismatch_examples(df: pd.DataFrame) -> pd.DataFrame:
             "soc_code",
             "soc_title",
             "isco_imp",
+            "implied_occupation_label",
             "isco_ref",
+            "reference_isco_title",
             "imp_task_support",
             "imp_support_share",
         ]
     ].copy()
     out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
     out["reference_crosswalk"] = out["reference_crosswalk"].map(CROSSWALK_LABELS).fillna(out["reference_crosswalk"])
+    # Combine ISCO code + title into a single readable cell
+    out["Implied ISCO"] = out["isco_imp"].astype(str) + " " + out["implied_occupation_label"].fillna("")
+    out["Reference ISCO"] = out["isco_ref"].astype(str) + " " + out["reference_isco_title"].fillna("")
+    out = out.drop(columns=["isco_imp", "implied_occupation_label", "isco_ref", "reference_isco_title"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
             "reference_crosswalk": "Reference",
             "soc_code": "SOC",
             "soc_title": "SOC title",
-            "isco_imp": "Implied ISCO",
-            "isco_ref": "Reference ISCO",
             "imp_task_support": "Task support",
             "imp_support_share": "Support share",
         }
     )
+    # Reorder columns
+    out = out[["Dataset", "Reference", "SOC", "SOC title", "Implied ISCO", "Reference ISCO", "Task support", "Support share"]]
     out["Task support"] = pd.to_numeric(out["Task support"], errors="coerce").fillna(0).astype(int)
     out["Support share"] = _fmt_float(out["Support share"], 3)
     return out
@@ -314,6 +332,85 @@ def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
     for col in ["Coverage", "Mean similarity", "Mean links/task", "Overloaded task share"]:
         out[col] = _fmt_float(out[col], 3)
     return out
+
+
+# ── Task examples table (loaded directly from crosswalk + O*NET data) ─────────
+
+def _task_examples_tex() -> str | None:
+    """Generate task assignment examples table with full input data (task text,
+    SOC occupation, DWA labels, ISCO assignment), one per ISCO major group."""
+    for p in [CROSSWALK_PATH, ONET_TASKS_PATH, ONET_DWA_PATH]:
+        if not p.exists():
+            return None
+
+    df_s5 = pd.read_csv(CROSSWALK_PATH)
+    if "stage" in df_s5.columns:
+        df_s5 = df_s5[df_s5["stage"] == "S5_FINAL"].copy()
+
+    tasks = pd.read_excel(ONET_TASKS_PATH)
+    dwa = pd.read_excel(ONET_DWA_PATH)
+
+    # Join SOC occupation title
+    task_soc = (
+        tasks[["Task ID", "Title"]]
+        .rename(columns={"Task ID": "task_id", "Title": "soc_title"})
+        .drop_duplicates("task_id")
+    )
+    df_s5 = df_s5.merge(task_soc, on="task_id", how="left")
+
+    # Aggregate DWA titles per task: top 2 unique labels, alphabetically
+    dwa_agg = (
+        dwa.groupby("Task ID")["DWA Title"]
+        .apply(lambda x: "; ".join(sorted(set(x))[:2]))
+        .reset_index()
+        .rename(columns={"Task ID": "task_id", "DWA Title": "dwa_titles"})
+    )
+    df_s5 = df_s5.merge(dwa_agg, on="task_id", how="left")
+
+    # Pick one example per ISCO major group: highest similarity
+    df_s5["isco_major"] = df_s5["iscoGroup"].astype(str).str[0]
+    sample = (
+        df_s5.sort_values("similarity", ascending=False)
+        .groupby("isco_major")
+        .first()
+        .reset_index()
+        .sort_values("isco_major")
+    )
+
+    def _esc(s: str) -> str:
+        """Escape LaTeX special characters in a string."""
+        if not isinstance(s, str):
+            return ""
+        return (
+            s.replace("&", r"\&")
+             .replace("%", r"\%")
+             .replace("_", r"\_")
+             .replace("^", r"\^{}")
+             .replace("#", r"\#")
+             .replace("$", r"\$")
+             .replace("{", r"\{")
+             .replace("}", r"\}")
+             .rstrip(".")
+        )
+
+    rows = []
+    for _, row in sample.iterrows():
+        task = _esc(str(row["task_text"]))
+        soc = _esc(str(row["soc_title"]))
+        dwa_str = _esc(str(row["dwa_titles"])) if pd.notna(row.get("dwa_titles")) else "---"
+        isco = _esc(f"{int(row['iscoGroup'])} {row['isco_title']}")
+        rows.append(f"    {task} & {soc} & {dwa_str} & {isco} \\\\")
+
+    body = "\n\\midrule\n".join(rows)
+
+    return (
+        r"\begin{tabular}{p{4.5cm}p{3cm}p{3.5cm}p{3.5cm}}"
+        "\n\\toprule\n"
+        "O*NET Task & SOC Occupation & DWA Labels (top 2) & ISCO-08 Assignment \\\\\n"
+        "\\midrule\n"
+        + body
+        + "\n\\bottomrule\n\\end{tabular}\n"
+    )
 
 
 # ── Ground-truth tables (read from GT_RESULTS_DIR, write raw LaTeX) ───────────
@@ -410,9 +507,10 @@ def main() -> None:
         _write_tex(out_df, out_path)
         written.append(out_path)
 
-    # Ground-truth tables from validation/results/
+    # Raw-tex tables generated directly from data
     for generator, tex_name in [
         (_gt01_validation_tex, "table_gt01_validation.tex"),
+        (_task_examples_tex, "table_task_examples.tex"),
     ]:
         content = generator()
         if content is None:
