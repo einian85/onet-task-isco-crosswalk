@@ -73,13 +73,26 @@ def load_cfg(path: str) -> RunConfig:
     return RunConfig(**load_yaml_or_json(path))
 
 
+def _run_id_from_manifest(final_output_path: str) -> str:
+    """Find the run_id of the most recent pipeline run for a given final_output_path."""
+    import json
+    target = final_output_path.replace("\\", "/")
+    preds_root = Path("results/predictions")
+    for manifest in sorted(preds_root.glob("*/run_manifest.json"), reverse=True):
+        d = json.loads(manifest.read_text(encoding="utf-8"))
+        cfg_path = d.get("config", {}).get("final_output_path", "").replace("\\", "/")
+        if cfg_path == target or cfg_path.endswith(Path(target).name):
+            return d["run_id"]
+    raise FileNotFoundError(f"No manifest found for final_output_path={final_output_path}")
+
+
 def latest_run_ids() -> dict[str, dict[str, str]]:
-    code_version = get_code_version()
     out: dict[str, dict[str, str]] = {}
     for dataset_id, meta in DATASET_META.items():
         cfg = load_cfg(meta["config_path"])
+        run_id = _run_id_from_manifest(cfg.final_output_path)
         out[dataset_id] = {
-            "run_id": compute_run_id(cfg, code_version, cfg.data_version),
+            "run_id": run_id,
             "label": meta["label"],
             "short": meta["short"],
         }
