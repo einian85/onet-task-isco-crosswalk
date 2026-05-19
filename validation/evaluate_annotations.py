@@ -30,7 +30,7 @@ import matplotlib.ticker as mtick
 import pandas as pd
 
 matplotlib.use("Agg")
-sys.stdout.reconfigure(encoding="utf-8")
+# sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from shared import GT_RESULTS_DIR, PROJECT_DIR, load_pipeline
