@@ -1,0 +1,21 @@
+candidate_label,candidate_description,label,n_tasks,n_in_crosswalk,pct_in_crosswalk,pct_exact,pct_sub_major,pct_major_group
+jf_d030_s675_i80_t60_o60,"Selected: joint sweep marginal optimum (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",A1_esco_soc18,18831,18808,99.9,81.4,89.7,94.1
+jf_d030_s675_i80_t60_o60,"Selected: joint sweep marginal optimum (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",A2_soc18_esco,18831,18595,98.7,73.7,84.2,88.9
+jf_d030_s675_i80_t60_o60,"Selected: joint sweep marginal optimum (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",A3_strict_intersection,18831,18556,98.5,73.7,84.1,88.9
+jf_d030_s675_i80_t60_o60,"Selected: joint sweep marginal optimum (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",A4_lenient_union,18831,18808,99.9,81.6,90.0,94.1
+jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",A1_esco_soc18,18832,18809,99.9,81.5,89.7,94.1
+jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",A2_soc18_esco,18832,18596,98.7,73.8,84.2,89.0
+jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",A3_strict_intersection,18832,18557,98.5,73.8,84.1,88.9
+jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",A4_lenient_union,18832,18809,99.9,81.7,90.1,94.2
+jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A1_esco_soc18,18831,18808,99.9,81.8,89.9,94.2
+jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A2_soc18_esco,18831,18595,98.7,74.2,84.6,89.2
+jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A3_strict_intersection,18831,18556,98.5,74.2,84.5,89.1
+jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A4_lenient_union,18831,18808,99.9,82.0,90.3,94.3
+jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A1_esco_soc18,18830,18807,99.9,81.8,89.9,94.2
+jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A2_soc18_esco,18830,18594,98.7,74.2,84.6,89.2
+jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A3_strict_intersection,18830,18555,98.5,74.2,84.5,89.2
+jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",A4_lenient_union,18830,18807,99.9,82.0,90.2,94.3
+fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",A1_esco_soc18,18824,18801,99.9,80.4,89.2,93.6
+fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",A2_soc18_esco,18824,18588,98.7,72.7,83.7,88.5
+fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",A3_strict_intersection,18824,18549,98.5,72.7,83.6,88.5
+fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",A4_lenient_union,18824,18801,99.9,80.6,89.5,93.7

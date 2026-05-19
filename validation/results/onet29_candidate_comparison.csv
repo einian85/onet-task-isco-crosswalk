@@ -1,0 +1,6 @@
+candidate_label,candidate_description,chain_n_tasks,chain_n_in_crosswalk,chain_pct_in_crosswalk,chain_pct_exact,chain_pct_sub_major,chain_pct_major_group,human_n_judged,human_pct_exact,human_pct_sub_major,human_pct_major_group,human_mean_similarity
+jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",18831,18808,99.9,82.0,90.3,94.3,108,54.6,70.4,81.5,0.7
+jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",18830,18807,99.9,82.0,90.2,94.3,108,54.6,70.4,81.5,0.701
+jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",18832,18809,99.9,81.7,90.1,94.2,108,54.6,71.3,80.6,0.698
+jf_d030_s675_i80_t60_o60,"Selected: joint sweep marginal optimum (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",18831,18808,99.9,81.6,90.0,94.1,108,54.6,71.3,81.5,0.699
+fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",18824,18801,99.9,80.6,89.5,93.7,108,50.9,68.5,79.6,0.7

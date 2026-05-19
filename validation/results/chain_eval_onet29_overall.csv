@@ -1,5 +1,5 @@
 label,n_tasks,n_in_crosswalk,pct_in_crosswalk,pct_exact,pct_sub_major,pct_major_group
-A1 – ESCO-SOC18 alone,18824,18801,99.9,80.4,89.2,93.6
-A2 – SOC18-ESCO alone,18824,1146,6.1,77.2,82.2,88.0
-A3 – Strict intersection,18824,1146,6.1,77.2,82.2,88.0
-A4 – Lenient union,18824,18801,99.9,80.4,89.2,93.6
+A1 – ESCO-SOC18 alone,18808,18785,99.9,67.7,80.9,88.3
+A2 – SOC18-ESCO alone,18808,18572,98.7,59.7,74.0,81.5
+A3 – Strict intersection,18808,18533,98.5,59.6,73.8,81.5
+A4 – Lenient union,18808,18785,99.9,68.0,81.2,88.4
