@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from config import RunConfig, load_yaml_or_json, stable_hash
-from pipeline import read_table, run_pipeline
+from pipeline import run_pipeline
 from stability import compare_runs_links, compare_runs_topk
 
 
@@ -205,8 +205,8 @@ def run_sweep(configs: list[RunConfig], baseline_run_id: str | None = None) -> p
         if matches:
             baseline_output = matches[0]
 
-    baseline_s1 = read_table(Path(baseline_output["stage_paths"]["S1_RETRIEVE"]).with_suffix(""))
-    baseline_s5 = read_table(Path(baseline_output["stage_paths"]["S5_FINAL"]).with_suffix(""))
+    baseline_s1 = baseline_output["s1"]
+    baseline_s5 = baseline_output["s5"]
 
     rows = []
     for run_output in run_outputs:
@@ -225,8 +225,8 @@ def run_sweep(configs: list[RunConfig], baseline_run_id: str | None = None) -> p
                 if key in {"run_id", "stage"}:
                     continue
                 row[f"{stage_name}_{key}"] = value
-        current_s1 = read_table(Path(run_output["stage_paths"]["S1_RETRIEVE"]).with_suffix(""))
-        current_s5 = read_table(Path(run_output["stage_paths"]["S5_FINAL"]).with_suffix(""))
+        current_s1 = run_output["s1"]
+        current_s5 = run_output["s5"]
         row.update({f"S1_{k}": v for k, v in compare_runs_topk(baseline_s1, current_s1, k=int(flat_cfg["k_retrieve"])).items()})
         row.update({f"S5_{k}": v for k, v in compare_runs_links(baseline_s5, current_s5).items()})
         rows.append(row)
