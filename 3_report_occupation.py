@@ -99,7 +99,8 @@ def _load_task_table(task_path: Path) -> pd.DataFrame:
 
 def load_implied_links(meta: dict[str, Any]) -> pd.DataFrame:
     pred = pd.read_csv(meta["crosswalk_path"])
-    pred = pred.loc[pred["stage"] == "S5_FINAL"].copy()
+    if "stage" in pred.columns:
+        pred = pred.loc[pred["stage"] == "S5_FINAL"].copy()
     pred["isco_code"] = pred["iscoGroup"].map(normalize_isco)
     pred = pred.dropna(subset=["isco_code"])
 
@@ -163,10 +164,24 @@ def load_reference_crosswalks() -> dict[str, pd.DataFrame]:
 
     xw18_2 = pd.read_csv("data/crosswalks/ONET_(Occupations)_0_updated.csv", skiprows=16)
     xw18_2 = xw18_2.rename(columns={"O*NET Id": "soc_raw", "Type of Match": "match_type"})
-    # Extract 4-digit ISCO code from URI (e.g. ".../esco/isco/C2512"); skip ESCO occupation URIs
-    xw18_2["isco_raw"] = xw18_2["ESCO or ISCO URI"].where(
-        xw18_2["ESCO or ISCO URI"].str.contains("/isco/", na=False)
-    ).str.extract(r"/C(\d{4})", expand=False)
+    # Direct /isco/ URIs → extract code immediately
+    xw18_2["isco_direct"] = (
+        xw18_2["ESCO or ISCO URI"]
+        .where(xw18_2["ESCO or ISCO URI"].str.contains("/isco/", na=False))
+        .str.extract(r"/C(\d{4})", expand=False)
+    )
+    # /occupation/ URIs → resolve ISCO via ESCO ontology (occupations_en.csv iscoGroup)
+    esco_occ = pd.read_csv(
+        "data/esco/occupations_en.csv", usecols=["conceptUri", "iscoGroup"]
+    ).dropna()
+    esco_occ["iscoGroup"] = pd.to_numeric(
+        esco_occ["iscoGroup"].astype(str).str[:4], errors="coerce"
+    ).dropna().astype(int).astype(str).str.zfill(4)
+    esco_occ = esco_occ.dropna(subset=["iscoGroup"]).rename(
+        columns={"conceptUri": "ESCO or ISCO URI", "iscoGroup": "isco_from_esco"}
+    )
+    xw18_2 = xw18_2.merge(esco_occ, on="ESCO or ISCO URI", how="left")
+    xw18_2["isco_raw"] = xw18_2["isco_direct"].combine_first(xw18_2["isco_from_esco"])
     xw18_2["soc_code"] = xw18_2["soc_raw"].map(normalize_soc)
     xw18_2["isco_code"] = xw18_2["isco_raw"].map(normalize_isco)
     xw18_2["score"] = xw18_2["match_type"].map(MATCH_SCORE).fillna(0.6)
@@ -192,34 +207,61 @@ def compare_pair_sets(implied: pd.DataFrame, reference: pd.DataFrame) -> dict[st
     }
 
 
+def _in_set_rates(imp_col: pd.Series, ref_set_col: pd.Series) -> tuple[float, float, float]:
+    """Return (4-digit, 2-digit, 1-digit) in-set rates."""
+    ref2_set = ref_set_col.apply(lambda s: {x[:2] for x in s})
+    ref1_set = ref_set_col.apply(lambda s: {x[0]  for x in s})
+    r4 = float(pd.Series([v[:4] in s        for v, s in zip(imp_col, ref_set_col)]).mean())
+    r2 = float(pd.Series([v[:2] in s        for v, s in zip(imp_col, ref2_set)]).mean())
+    r1 = float(pd.Series([v[0]  in s        for v, s in zip(imp_col, ref1_set)]).mean())
+    return r4, r2, r1
+
+
 def compare_top1(implied: pd.DataFrame, reference: pd.DataFrame) -> dict[str, Any]:
     imp_top = top1_mapping(implied, "support_share").rename(columns={"isco_code": "isco_imp"})
-    ref_scored = reference.groupby(["soc_code", "isco_code"], as_index=False)["score"].sum()
-    ref_top = top1_mapping(ref_scored, "score").rename(columns={"isco_code": "isco_ref"})
-    merged = imp_top.merge(ref_top[["soc_code", "isco_ref"]], on="soc_code", how="inner")
+    # Build the full acceptable ISCO set per SOC from the reference (many-to-many aware)
+    ref_sets = (
+        reference.groupby("soc_code")["isco_code"]
+        .apply(set)
+        .reset_index()
+        .rename(columns={"isco_code": "isco_ref_set"})
+    )
+    merged = imp_top.merge(ref_sets, on="soc_code", how="inner")
     if merged.empty:
         return {
             "n_shared_soc": 0,
             "top1_agreement_share": 0.0,
+            "top1_sub_major_share": 0.0,
+            "top1_major_group_share": 0.0,
         }
-    agree = (merged["isco_imp"] == merged["isco_ref"]).mean()
+    r4, r2, r1 = _in_set_rates(merged["isco_imp"], merged["isco_ref_set"])
     return {
         "n_shared_soc": int(len(merged)),
-        "top1_agreement_share": float(agree),
+        "top1_agreement_share": r4,
+        "top1_sub_major_share": r2,
+        "top1_major_group_share": r1,
     }
 
 
 def compare_top1_between_refs(ref_a: pd.DataFrame, ref_b: pd.DataFrame) -> dict[str, Any]:
     a_scored = ref_a.groupby(["soc_code", "isco_code"], as_index=False)["score"].sum()
-    b_scored = ref_b.groupby(["soc_code", "isco_code"], as_index=False)["score"].sum()
     a_top = top1_mapping(a_scored, "score").rename(columns={"isco_code": "isco_a"})
-    b_top = top1_mapping(b_scored, "score").rename(columns={"isco_code": "isco_b"})
-    merged = a_top.merge(b_top[["soc_code", "isco_b"]], on="soc_code", how="inner")
+    b_sets = (
+        ref_b.groupby("soc_code")["isco_code"]
+        .apply(set)
+        .reset_index()
+        .rename(columns={"isco_code": "isco_b_set"})
+    )
+    merged = a_top.merge(b_sets, on="soc_code", how="inner")
     if merged.empty:
-        return {"n_shared_soc": 0, "top1_agreement_share": 0.0}
+        return {"n_shared_soc": 0, "top1_agreement_share": 0.0,
+                "top1_sub_major_share": 0.0, "top1_major_group_share": 0.0}
+    r4, r2, r1 = _in_set_rates(merged["isco_a"], merged["isco_b_set"])
     return {
         "n_shared_soc": int(len(merged)),
-        "top1_agreement_share": float((merged["isco_a"] == merged["isco_b"]).mean()),
+        "top1_agreement_share": r4,
+        "top1_sub_major_share": r2,
+        "top1_major_group_share": r1,
     }
 
 
@@ -298,8 +340,22 @@ def _select_reference_for_dataset(meta: dict[str, Any]) -> str:
 
 
 def _get_run_id_from_crosswalk(crosswalk_path: Path) -> str:
-    df = pd.read_csv(crosswalk_path, usecols=["run_id"])
-    return str(df["run_id"].iloc[0])
+    # Try reading run_id directly from crosswalk (older format)
+    try:
+        df = pd.read_csv(crosswalk_path, usecols=["run_id"])
+        return str(df["run_id"].iloc[0])
+    except (ValueError, KeyError):
+        pass
+    # Newer format: match via run_manifest.json stored under results/predictions/
+    import json
+    preds_root = Path("results/predictions")
+    target = str(crosswalk_path).replace("\\", "/")
+    for manifest in sorted(preds_root.glob("*/run_manifest.json"), reverse=True):
+        d = json.loads(manifest.read_text(encoding="utf-8"))
+        cfg_path = d.get("config", {}).get("final_output_path", "").replace("\\", "/")
+        if cfg_path == target or cfg_path.endswith(crosswalk_path.name):
+            return d["run_id"]
+    raise FileNotFoundError(f"No manifest found matching crosswalk {crosswalk_path}")
 
 
 def _load_stage_df(run_id: str, stage: str) -> pd.DataFrame:
@@ -442,7 +498,7 @@ def plot_top1_agreement(summary_df: pd.DataFrame) -> Path:
     ax.bar(x, summary_df["top1_agreement_share"], color="#35618f")
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels, rotation=35, ha="right")
-    ax.set_ylabel("SOC-level Top-1 Agreement")
+    ax.set_ylabel("SOC-level in-set rate (top-1 in ref. acceptable set)")
     ax.set_title("Implied SOC\u2192ISCO vs Institutional Crosswalks")
     fig.tight_layout()
     out = OUT_DIR / "figure_occupation_top1_agreement.png"
