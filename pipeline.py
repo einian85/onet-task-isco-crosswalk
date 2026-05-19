@@ -19,14 +19,16 @@ from sklearn.preprocessing import normalize
 from config import (
     RunConfig,
     compute_input_hashes,
+    compute_overload_threshold,
     compute_run_id,
     get_code_version,
     load_config,
     save_config,
     save_manifest,
+    stable_hash,
     validate_config,
 )
-from metrics_unsup import compute_unsup_metrics, append_metrics_long
+from metrics_unsup import compute_unsup_metrics
 
 STAGES = ("S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE", "S4_OVERLOAD", "S5_FINAL")
 
@@ -40,6 +42,12 @@ _EMBEDDING_MEM_CACHE: dict[str, "np.ndarray"] = {}
 # in newer transformers versions; caching it here avoids repeated network calls
 # and prevents segfaults from the offline/cached code path.
 _MODEL_CACHE: dict[str, "SentenceTransformer"] = {}
+
+# In-process cache for loaded source dataframes.
+# Key: stable_hash of the relevant config fields (data paths + loading options).
+# All sweep variants with the same data files share this cache — the ~15-20s
+# of Excel/CSV loading only happens once per unique data configuration.
+_DATA_CACHE: dict[str, dict] = {}
 
 
 def ensure_dir(path: str | Path) -> Path:
@@ -59,25 +67,36 @@ def _embedding_cache_dir(cfg: RunConfig) -> Path:
 # Tier 1: raw model-inference embeddings — weight-independent, shared across ALL
 # sweep variants (any w_isco, w_isco_task, w_occ, w_soc_title, w_dwa value).
 # Stored as  checkpoints/{name}_{raw_fingerprint}.pkl
-_TIER1_NAMES = frozenset({
-    "onet_task_emb_raw",       # task text only (no DWA concatenation)
-    "onet_title_emb_raw",      # SOC occupation title
-    "onet_dwa_label_emb_raw",  # unique DWA label strings
+_ONET_TIER1_NAMES = frozenset({
+    "onet_task_emb_raw",
+    "onet_title_emb_raw",
+    "onet_dwa_label_emb_raw",
+})
+_TARGET_TIER1_NAMES = frozenset({
     "esco_occ_emb_raw",
     "esco_skill_label_emb_raw",
     "isco_info_emb_raw",
     "isco_task_item_emb_raw",
 })
+_TIER1_NAMES = _ONET_TIER1_NAMES | _TARGET_TIER1_NAMES
 
 
-def _raw_fingerprint(cfg: RunConfig) -> str:
-    """Fingerprint for Tier 1 embeddings — depends only on data files + model."""
+def _query_fingerprint(cfg: RunConfig) -> str:
+    """Fingerprint for O*NET query-side embeddings — depends on O*NET data + model."""
     relevant = {
-        "include_esco_skills": cfg.include_esco_skills,
         "embedding_model": cfg.embedding_model,
         "limit_tasks": cfg.limit_tasks,
         "onet_tasks_path": cfg.onet_tasks_path,
         "onet_tasks_dwa_path": cfg.onet_tasks_dwa_path,
+    }
+    return hashlib.sha256(json.dumps(relevant, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+
+
+def _target_fingerprint(cfg: RunConfig) -> str:
+    """Fingerprint for ESCO/ISCO target-side embeddings — independent of O*NET dataset."""
+    relevant = {
+        "include_esco_skills": cfg.include_esco_skills,
+        "embedding_model": cfg.embedding_model,
         "esco_skills_path": cfg.esco_skills_path,
         "esco_occupation_rel_path": cfg.esco_occupation_rel_path,
         "esco_occupations_path": cfg.esco_occupations_path,
@@ -87,8 +106,9 @@ def _raw_fingerprint(cfg: RunConfig) -> str:
 
 
 def raw_checkpoint_path(cfg: RunConfig, name: str) -> Path:
-    """Path for Tier 1 (weight-independent) embeddings — no variant prefix."""
-    return _embedding_cache_dir(cfg) / f"{name}_{_raw_fingerprint(cfg)}.pkl"
+    """Path for Tier 1 (weight-independent) embeddings."""
+    fp = _query_fingerprint(cfg) if name in _ONET_TIER1_NAMES else _target_fingerprint(cfg)
+    return _embedding_cache_dir(cfg) / f"{name}_{fp}.pkl"
 
 
 def is_valid_embedding(emb, expected_rows: int | None = None, expected_dim: int | None = None) -> bool:
@@ -305,15 +325,21 @@ def embed_texts(
     emb = None
     if path.exists():
         print(f"Loading checkpoint: {path}")
-        with path.open("rb") as f:
-            emb = pickle.load(f)
+        try:
+            with path.open("rb") as f:
+                emb = pickle.load(f)
+        except Exception:
+            print(f"Corrupt checkpoint {path} — recomputing.")
+            path.unlink(missing_ok=True)
     if not is_valid_embedding(emb, expected_rows=len(texts), expected_dim=expected_dim):
         print(f"Recomputing embeddings for {cache_name}.")
         emb = model.encode(texts, batch_size=64, show_progress_bar=True)
         if normalize_output:
             emb = normalize(emb)
-        with path.open("wb") as f:
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        with tmp.open("wb") as f:
             pickle.dump(emb, f, protocol=pickle.HIGHEST_PROTOCOL)
+        tmp.replace(path)
         print(f"Saved checkpoint: {path}")
     print(f"{cache_name} shape: {emb.shape}")
     _EMBEDDING_MEM_CACHE[cache_key] = emb
@@ -375,6 +401,37 @@ def _mean_embeddings_per_task(
     nonzero = counts > 0
     result[nonzero] /= counts[nonzero, np.newaxis]
     return result
+
+
+def _get_or_load_data(cfg: RunConfig) -> dict:
+    """Load source dataframes, caching by data-path fingerprint across sweep variants."""
+    key = stable_hash({
+        "onet_tasks_path": cfg.onet_tasks_path,
+        "onet_tasks_dwa_path": cfg.onet_tasks_dwa_path,
+        "esco_skills_path": cfg.esco_skills_path,
+        "esco_occupation_rel_path": cfg.esco_occupation_rel_path,
+        "esco_occupations_path": cfg.esco_occupations_path,
+        "isco_tasks_path": cfg.isco_tasks_path,
+        "include_esco_skills": cfg.include_esco_skills,
+        "limit_tasks": cfg.limit_tasks,
+        "use_task_ids": cfg.use_task_ids,
+        "include_soc_title": cfg.include_soc_title,
+        "w_soc_title_is_zero": cfg.w_soc_title == 0,
+    })
+    if key not in _DATA_CACHE:
+        print("Loading source data (will be cached for subsequent runs)...")
+        df_tasks = build_task_table(cfg)
+        _DATA_CACHE[key] = {
+            "df_tasks": df_tasks,
+            "df_dwa_long": load_dwa_long(cfg, df_tasks),
+            "df_esco_occ": load_esco_occupations(cfg),
+            "df_esco_skills": (
+                load_esco_skills_long(cfg) if cfg.include_esco_skills
+                else pd.DataFrame(columns=["iscoGroup", "preferredLabel"])
+            ),
+            "df_isco_groups_items": load_isco_standard(cfg),
+        }
+    return _DATA_CACHE[key]
 
 
 def build_embeddings(
@@ -660,7 +717,7 @@ def apply_overload_control(
             "pruned_tasks_affected_share": 0.0,
         }
     counts = df_s3.groupby("target_id")["task_id"].nunique()
-    threshold = max(cfg.overload_abs, int(counts.quantile(cfg.overload_quantile)))
+    threshold = compute_overload_threshold(counts, cfg)
     overloaded = set(counts[counts > threshold].index.astype(str))
     if not overloaded:
         return _dedupe_targets(df_s3), {
@@ -732,8 +789,7 @@ def _standardize_stage(df: pd.DataFrame, stage: str, run_id: str) -> pd.DataFram
 
 def _write_stage(df: pd.DataFrame, stage: str, run_id: str, cfg: RunConfig) -> Path:
     if cfg.slim_output:
-        # In slim mode skip writing stage CSVs; return a placeholder path.
-        return _stage_output_dir(cfg, run_id) / stage
+        return Path(cfg.output_dir) / "predictions" / run_id / stage
     return write_table(_standardize_stage(df, stage, run_id), _stage_output_dir(cfg, run_id) / stage)
 
 
@@ -748,19 +804,13 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
 
     code_version = get_code_version()
     run_id = compute_run_id(cfg, code_version, cfg.data_version)
-    run_dir = _stage_output_dir(cfg, run_id)
-    save_config(cfg, run_dir / "config.json")
-    inputs_hashes = compute_input_hashes(cfg)
 
-    # Load data
-    df_tasks = build_task_table(cfg)
-    df_dwa_long = load_dwa_long(cfg, df_tasks)
-    df_esco_occ = load_esco_occupations(cfg)
-    df_esco_skills = (
-        load_esco_skills_long(cfg) if cfg.include_esco_skills
-        else pd.DataFrame(columns=["iscoGroup", "preferredLabel"])
-    )
-    df_isco_groups, df_isco_task_items = load_isco_standard(cfg)
+    data = _get_or_load_data(cfg)
+    df_tasks = data["df_tasks"]
+    df_dwa_long = data["df_dwa_long"]
+    df_esco_occ = data["df_esco_occ"]
+    df_esco_skills = data["df_esco_skills"]
+    df_isco_groups, df_isco_task_items = data["df_isco_groups_items"]
     universe_isco = set(df_isco_groups["isco_code"].astype(str).unique())
 
     # Build embeddings and retrieve
@@ -807,46 +857,61 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
         metrics_long_rows.append(metrics)
         prev_df = stage_df
 
-    metrics_dir = _metrics_dir(cfg)
-    run_metrics_dir = ensure_dir(metrics_dir / run_id)
-    metrics_json_path = run_metrics_dir / "metrics.json"
-    metrics_json_path.write_text(json.dumps(metrics_payload, indent=2, sort_keys=True), encoding="utf-8")
-    flat_metrics_json_path = metrics_dir / f"{run_id}.json"
-    flat_metrics_json_path.write_text(json.dumps(metrics_payload, indent=2, sort_keys=True), encoding="utf-8")
-    for stage_name, metrics in metrics_payload.items():
-        (run_metrics_dir / f"metrics_{stage_name}.json").write_text(
-            json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8"
-        )
     metrics_long_df = pd.DataFrame(metrics_long_rows)
-    metrics_csv_path = run_metrics_dir / "metrics.csv"
-    metrics_long_df.to_csv(metrics_csv_path, index=False)
-    append_metrics_long(metrics_long_df, Path(cfg.output_dir) / "metrics" / "metrics_long.csv")
 
+    if cfg.slim_output:
+        # Append a single flat row to the shared checkpoint CSV instead of
+        # creating per-run directories. This is the restart checkpoint for sweeps.
+        checkpoint_path = Path(cfg.output_dir) / "metrics" / "checkpoints.csv"
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        flat: dict[str, Any] = {"run_id": run_id}
+        for _, mrow in metrics_long_df.iterrows():
+            stage = mrow["stage"]
+            for k, v in mrow.items():
+                if k not in {"run_id", "stage"}:
+                    flat[f"{stage}_{k}"] = v
+        pd.DataFrame([flat]).to_csv(
+            checkpoint_path, mode="a", index=False, header=not checkpoint_path.exists()
+        )
+        metrics_json_path = checkpoint_path
+        metrics_csv_path = checkpoint_path
+    else:
+        run_metrics_dir = ensure_dir(_metrics_dir(cfg) / run_id)
+        metrics_json_path = run_metrics_dir / "metrics.json"
+        metrics_json_path.write_text(json.dumps(metrics_payload, indent=2, sort_keys=True), encoding="utf-8")
+        metrics_csv_path = run_metrics_dir / "metrics.csv"
+        metrics_long_df.to_csv(metrics_csv_path, index=False)
+
+    manifest_path = None
     if not cfg.slim_output:
+        run_dir = _stage_output_dir(cfg, run_id)
+        save_config(cfg, run_dir / "config.json")
         final_df = _standardize_stage(s5, "S5_FINAL", run_id)
+        drop = ["run_id", "stage", "task_text_hash", "task_key", "target_id", "gap_1_k", "topk_entropy", "kept_reason"]
+        final_df = final_df.drop(columns=[c for c in drop if c in final_df.columns])
         ensure_dir(Path(cfg.final_output_path).parent)
         final_df.to_csv(cfg.final_output_path, index=False)
         print(f"Saved final crosswalk: {cfg.final_output_path}")
-
-    manifest_path = save_manifest(
-        run_dir,
-        cfg,
-        run_id,
-        inputs_hashes,
-        stage_paths,
-        metrics_paths={"metrics_json": str(metrics_json_path), "metrics_csv": str(metrics_csv_path)},
-        extra={"code_version": code_version, "overload_info": overload_info},
-    )
+        manifest_path = save_manifest(
+            run_dir,
+            cfg,
+            run_id,
+            compute_input_hashes(cfg),
+            stage_paths,
+            metrics_paths={"metrics_json": str(metrics_json_path), "metrics_csv": str(metrics_csv_path)},
+            extra={"code_version": code_version, "overload_info": overload_info},
+        )
 
     return {
         "run_id": run_id,
         "stage_paths": stage_paths,
         "metrics_path": str(metrics_json_path),
-        "metrics_flat_path": str(flat_metrics_json_path),
-        "manifest_path": str(manifest_path),
+        "manifest_path": str(manifest_path) if manifest_path else None,
         "final_output_path": cfg.final_output_path,
         "config": cfg,
-        "s5": s5,   # in-memory S5 DataFrame (used by sweep for comparison metrics)
+        "metrics_df": metrics_long_df,
+        "s1": s1,
+        "s5": s5,
     }
 
 
