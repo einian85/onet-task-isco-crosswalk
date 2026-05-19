@@ -197,6 +197,11 @@ def compute_run_id(cfg: RunConfig, code_version: str, data_version: str) -> str:
     return stable_hash({"config": cfg.to_hash_dict(), "code_version": code_version, "data_version": data_version})[:16]
 
 
+def compute_overload_threshold(counts, cfg: RunConfig) -> float:
+    """Shared helper so pipeline and metrics use identical overload threshold logic."""
+    return max(float(cfg.overload_abs), float(counts.quantile(cfg.overload_quantile)))
+
+
 
 def file_signature(path: str | Path) -> dict[str, Any]:
     p = Path(path)
