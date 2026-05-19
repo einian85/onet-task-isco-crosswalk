@@ -1,6 +1,5 @@
 ﻿from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 from typing import Any
@@ -8,7 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from config import RunConfig
+from config import RunConfig, compute_overload_threshold
 from pipeline import STAGES, read_table
 
 
@@ -130,7 +129,7 @@ def distribution_metrics(preds: pd.DataFrame, config: RunConfig) -> dict[str, An
     target_counts = preds.groupby("target_id")["task_id"].nunique()
     task_counts = preds.groupby("task_id")["target_id"].nunique()
     coverage = float((target_counts > 0).mean())
-    overload_threshold = max(config.overload_abs, float(target_counts.quantile(config.overload_quantile)))
+    overload_threshold = compute_overload_threshold(target_counts, config)
     overloaded_targets = set(target_counts[target_counts > overload_threshold].index.astype(str))
     overloaded_rows = preds[preds["target_id"].astype(str).isin(overloaded_targets)]
     return {
@@ -171,24 +170,10 @@ def evaluate_run(run_id: str, config: RunConfig, ground_truth_path: str | Path) 
         stage_table = read_table(root / "predictions" / run_id / stage)
         metrics = evaluate_stage(stage_table, gt, config, stage, run_id)
         rows.append(metrics)
-        (metric_dir / f"metrics_{stage}.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     metrics_df = pd.DataFrame(rows)
     metrics_df.to_csv(metric_dir / "metrics.csv", index=False)
     return metrics_df
-
-
-def append_summary(metrics_df: pd.DataFrame, results_dir: str | Path) -> Path:
-    summary_path = Path(results_dir) / "summary" / "results.csv"
-    summary_path.parent.mkdir(parents=True, exist_ok=True)
-    if summary_path.exists():
-        existing = pd.read_csv(summary_path)
-        combined = pd.concat([existing, metrics_df], ignore_index=True)
-        combined = combined.drop_duplicates(subset=["run_id", "stage"], keep="last")
-    else:
-        combined = metrics_df.copy()
-    combined.to_csv(summary_path, index=False)
-    return summary_path
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from config import RunConfig
+from config import RunConfig, compute_overload_threshold
 
 _TASK_TOTAL_CACHE: dict[tuple[str, bool, int | None], int] = {}
 
@@ -107,7 +107,7 @@ def compute_unsup_metrics(df_stage: pd.DataFrame, cfg: RunConfig, universe_isco:
     task_counts = df.groupby("task_id")["target_id"].nunique()
     isco_counts = df.groupby("target_id")["task_id"].nunique()
     top5_share = float(isco_counts.sort_values(ascending=False).head(5).sum() / isco_counts.sum()) if isco_counts.sum() else 0.0
-    overload_thr = max(cfg.overload_abs, float(isco_counts.quantile(cfg.overload_quantile)))
+    overload_thr = compute_overload_threshold(isco_counts, cfg)
     overloaded = set(isco_counts[isco_counts > overload_thr].index.astype(str))
     tasks_in_overloaded = df[df["target_id"].isin(overloaded)]["task_id"].nunique()
 
@@ -165,16 +165,3 @@ def compute_unsup_metrics(df_stage: pd.DataFrame, cfg: RunConfig, universe_isco:
         )
     return metrics
 
-
-
-def append_metrics_long(df: pd.DataFrame, path: str | Path) -> Path:
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    if p.exists():
-        existing = pd.read_csv(p)
-        combined = pd.concat([existing, df], ignore_index=True)
-        combined = combined.drop_duplicates(subset=["run_id", "stage"], keep="last")
-    else:
-        combined = df.copy()
-    combined.to_csv(p, index=False)
-    return p
