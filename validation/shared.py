@@ -119,14 +119,33 @@ def load_soc18_crosswalks() -> dict[str, pd.DataFrame]:
         .reset_index(drop=True)
     )
 
-    # XW18.2: ONET-SOC → ESCO/ISCO (CSV; ISCO code extracted from URI, e.g. ".../isco/C2512")
+    # XW18.2: ONET-SOC → ESCO/ISCO (CSV; ISCO code extracted either directly from
+    # /isco/ URIs or resolved via the ESCO occupation ontology for /occupation/ URIs).
     # The file has a 16-row metadata preamble before the actual column header row.
     raw2 = clean_names(pd.read_csv(XW_SOC18_TO_ESCO, skiprows=16))
-    raw2["isco_code_raw"] = (
+
+    # Load ESCO occupation → ISCO mapping for URI resolution
+    esco_occ = pd.read_csv(
+        PROJECT_DIR / "data" / "esco" / "occupations_en.csv",
+        usecols=["conceptUri", "iscoGroup"],
+    ).dropna()
+    esco_occ["iscoGroup"] = pd.to_numeric(
+        esco_occ["iscoGroup"].astype(str).str[:4], errors="coerce"
+    )
+    esco_occ = esco_occ.dropna(subset=["iscoGroup"]).rename(
+        columns={"conceptUri": "esco_or_isco_uri", "iscoGroup": "isco_from_esco"}
+    )
+
+    # Resolve ISCO codes: direct /isco/ URIs take priority; /occupation/ URIs resolved via ontology
+    raw2["isco_direct"] = (
         raw2["esco_or_isco_uri"]
         .where(raw2["esco_or_isco_uri"].str.contains("/isco/", na=False))
         .str.extract(r"/C(\d{4})", expand=False)
+        .pipe(pd.to_numeric, errors="coerce")
     )
+    raw2 = raw2.merge(esco_occ, on="esco_or_isco_uri", how="left")
+    raw2["isco_code_raw"] = raw2["isco_direct"].combine_first(raw2["isco_from_esco"])
+
     xw18_2 = (
         raw2.assign(
             soc_code18=soc_to_7(raw2["o_net_id"]),
@@ -215,7 +234,8 @@ def load_pipeline(pipeline_path: Path) -> pd.DataFrame:
             f"Pipeline output not found: {pipeline_path}\n  Run the Python pipeline first."
         )
     df = pd.read_csv(pipeline_path)
-    df = df[df["stage"] == "S5_FINAL"].copy()
+    if "stage" in df.columns:
+        df = df[df["stage"] == "S5_FINAL"].copy()
     if "iscoGroup" in df.columns:
         df = df.rename(columns={"iscoGroup": "isco_pred"})
     df["isco_pred"] = pd.to_numeric(df["isco_pred"], errors="coerce").astype("Int64")
