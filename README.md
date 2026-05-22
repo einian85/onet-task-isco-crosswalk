@@ -197,7 +197,7 @@ The workbook intentionally excludes model predictions to avoid biasing annotatio
 
 | Metric | O*NET 29.2 | O*NET 25.0 |
 |--------|-----------|-----------|
-| Chain crosswalk agreement, lenient union | 68.0% exact; 88.4% major-group | rerun after config alignment |
+| Chain crosswalk agreement, lenient union | 68.0% exact; 88.4% major-group | 49.4% exact; 74.2% major-group |
 | Human expert annotation (n=108) | 36.1% exact; 57.4% sub-major; 72.2% major-group | not evaluated |
 | Current `w_soc_title` | 0.375 | 0.375 |
 
