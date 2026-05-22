@@ -13,9 +13,9 @@ Pre-computed crosswalk files are in [`output/`](output/). The sections below des
 
 ## What this does
 
-Each O*NET task statement is mapped to one or more ISCO-08 4-digit unit groups using dual-side Sentence-BERT (`all-mpnet-base-v2`) embeddings and FAISS retrieval. The query embedding blends the task text with the SOC occupation title; the target embedding blends the ISCO-08 official task descriptions, ESCO occupation text, and ESCO skills. Candidates pass through five filtering stages: retrieval -> task-filter -> coverage -> overload -> final.
+Each O*NET task statement is mapped to one or more ISCO-08 4-digit unit groups using dual-side Sentence-BERT (`all-mpnet-base-v2`) embeddings and FAISS retrieval. The query embedding blends the task text with Detailed Work Activity (DWA) labels and the SOC occupation title; the target embedding blends ISCO-08 official descriptions and task items with ESCO occupation text and ESCO skills. Candidates pass through five filtering stages: retrieval -> task-filter -> coverage -> overload -> final.
 
-Production parameters are still being tuned. Use the YAML configs in the repository for the current settings.
+The main task filter keeps one best link per task. Coverage backfill can add a small number of additional task-ISCO links so that otherwise missing ISCO groups are represented. Use the YAML configs in the repository for the current production settings.
 
 Two datasets are covered:
 
@@ -23,6 +23,13 @@ Two datasets are covered:
 |--------|---------------|-------------|--------|
 | `config_onet29.yaml` | 29.2 | SOC 2018 | `output/ONET29_task_to_ISCO_crosswalk.csv` |
 | `config_onet25.yaml` | 25.0 | SOC 2010 | `output/ONET25_task_to_ISCO_crosswalk.csv` |
+
+Current headline settings:
+
+| Config | `w_soc_title` | `w_dwa` | `w_isco` | `w_isco_task` | `w_occ` | `max_links_per_task` |
+|--------|---------------|---------|----------|---------------|---------|----------------------|
+| `config_onet29.yaml` | 0.375 | 0.2656 | 0.375 | 0.7344 | 0.1562 | 1 |
+| `config_onet25.yaml` | 0.375 | 0.2656 | 0.375 | 0.7344 | 0.1562 | 1 |
 
 ---
 
@@ -48,12 +55,11 @@ Two datasets are covered:
 |
 |-- sweep.py                  # Sweep engine (random configs, Pareto scoring)
 |-- sweep/
-|   |-- 1_run_sweep_onet29.py          # 500-point random parameter sweep (ONET29)
-|   |-- 2_run_focused_sweep_onet29.py  # Focused 2D grid + random sweep (ONET29)
-|   |-- 3_visualize_sweep.py           # Heatmaps and Pareto plots
-|   |-- sweep_random.yaml              # Random sweep parameter spec
-|   |-- sweep_focused.yaml             # Focused sweep parameter spec
-|   `-- sweep_oat.yaml                 # One-at-a-time sensitivity spec
+|   |-- run_systematic_sweep_onet29.py # Adaptive iterative parameter sweep
+|   |-- plot_sweep_params.py           # Parameter heatmaps
+|   |-- _best_config.py                # Inspect best sweep configurations
+|   |-- _sweep_stats.py                # Sweep diagnostics
+|   `-- _trace_rounds.py               # Trace adaptive sweep rounds
 |
 |-- output/
 |   |-- ONET29_task_to_ISCO_crosswalk.csv   # Pre-computed (O*NET 29.2)
@@ -141,17 +147,14 @@ Embeddings are cached in `checkpoints/` after the first run. Subsequent runs wit
 The ONET29 sensitivity analysis is produced by:
 
 ```bash
-# Step 1: 500-point random sweep (ONET29)
-python sweep/1_run_sweep_onet29.py
+# Adaptive five-parameter sweep (ONET29)
+python sweep/run_systematic_sweep_onet29.py
 
-# Step 2: Focused 2D grid + random sweep around the region of interest
-python sweep/2_run_focused_sweep_onet29.py
-
-# Step 3: Visualize sweep results
-python sweep/3_visualize_sweep.py   # -> results/summary/sweep_visualizations/*.png
+# Parameter heatmaps
+python sweep/plot_sweep_params.py
 ```
 
-Sweep metrics and figures go to `results/summary/` and `results/summary/sweep_visualizations/`.
+Sweep metrics are written to `results/summary/`; parameter figures are written to `sweep/` and copied into `results/publication/` by the publication scripts.
 
 ---
 
@@ -194,36 +197,32 @@ The workbook intentionally excludes model predictions to avoid biasing annotatio
 
 | Metric | O*NET 29.2 | O*NET 25.0 |
 |--------|-----------|-----------|
-| Chain crosswalk agreement (exact) | 88.2% | see `chain_eval_onet25_overall.csv` |
-| Human expert annotation (exact, n=108) | 61.1% (81.5% at major-group level) | not evaluated |
-| Optimal `w_soc_title` | under active tuning | under active tuning |
+| Chain crosswalk agreement, lenient union | 68.0% exact; 88.4% major-group | rerun after config alignment |
+| Human expert annotation (n=108) | 36.1% exact; 57.4% sub-major; 72.2% major-group | not evaluated |
+| Current `w_soc_title` | 0.375 | 0.375 |
+
+The final O*NET 29.2 mapping currently assigns tasks to 435 of 436 ISCO-08 unit groups. The missing unit group is ISCO 7516, Tobacco Preparers and Tobacco Products Makers.
 
 ---
 
 ## Output format
 
-Both crosswalk CSVs share the same schema. Each row is one task-ISCO candidate link at pipeline stage `S5_FINAL`:
+Final crosswalk CSVs contain one row per retained task-ISCO link after the `S5_FINAL` stage. The current export intentionally writes a compact public-use schema:
 
 | Column | Description |
 |--------|-------------|
-| `run_id` | Hash identifying the pipeline run |
-| `stage` | Pipeline stage (`S5_FINAL` = kept after all filters) |
-| `task_key` | Task key used internally by the pipeline |
 | `task_id` | O*NET Task ID |
 | `task_text` | Task statement text |
 | `candidate_rank` | Rank of the retained ISCO candidate for that task |
 | `iscoGroup` | 4-digit ISCO-08 unit group |
-| `target_id` | Internal target identifier (same as `iscoGroup`) |
 | `isco_title` | ISCO occupation label |
 | `similarity` | Cosine similarity score |
 | `task_best_similarity` | Best retrieval similarity for the task before filtering |
 | `task_best_target` | Best retrieval target before filtering |
 | `gap_1_2` | Similarity gap between the top-1 and top-2 retrieved targets |
-| `gap_1_k` | Similarity gap between the top-1 and top-k retrieved targets |
-| `topk_entropy` | Softmax entropy across the retrieved candidates |
 | `is_best` | Whether the row is the task's best-scoring retained target |
-| `kept_reason` | Why the row survived the filtering pipeline |
-| `task_text_hash` | Stable hash of the original task text |
+
+Full intermediate stage files, including `run_id`, `stage`, `task_key`, `target_id`, `gap_1_k`, `topk_entropy`, `kept_reason`, and `task_text_hash`, are written under `results/predictions/<run_id>/`.
 
 ---
 
