@@ -693,8 +693,12 @@ def apply_coverage_backfill(
     missing = sorted(universe_isco - covered)
     if not missing or not cfg.enforce_isco_coverage:
         return _dedupe_targets(df_stage)
+    assigned_tasks = set(df_stage["task_id"].astype(str).unique())
     add_rows = (
-        df_s1[df_s1["target_id"].astype(str).isin(missing)]
+        df_s1[
+            df_s1["target_id"].astype(str).isin(missing) &
+            ~df_s1["task_id"].astype(str).isin(assigned_tasks)
+        ]
         .sort_values(["target_id", "similarity", "task_id"], ascending=[True, False, True])
         .groupby("target_id", group_keys=False)
         .head(1)
