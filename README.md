@@ -13,9 +13,9 @@ Pre-computed crosswalk files are in [`output/`](output/). The sections below des
 
 ## What this does
 
-Each O*NET task statement is mapped to one or more ISCO-08 4-digit unit groups using dual-side Sentence-BERT (`all-mpnet-base-v2`) embeddings and FAISS retrieval. The query embedding blends the task text with Detailed Work Activity (DWA) labels and the SOC occupation title; the target embedding blends ISCO-08 official descriptions and task items with ESCO occupation text and ESCO skills. Candidates pass through five filtering stages: retrieval -> task-filter -> coverage -> overload -> final.
+Each O*NET task statement is mapped to exactly one ISCO-08 4-digit unit group using dual-side Sentence-BERT (`all-mpnet-base-v2`) embeddings and FAISS retrieval. The query embedding blends the task text with Detailed Work Activity (DWA) labels and the SOC occupation title; the target embedding blends ISCO-08 official descriptions and task items with ESCO occupation text and ESCO skills. Candidates pass through five filtering stages: retrieval -> task-filter -> coverage -> overload -> final.
 
-The main task filter keeps one best link per task. Coverage backfill can add a small number of additional task-ISCO links so that otherwise missing ISCO groups are represented. Use the YAML configs in the repository for the current production settings.
+Each task is assigned to exactly one ISCO-08 unit group. Coverage backfill ensures missing ISCO groups are represented using only unassigned tasks, so the one-to-one property is preserved throughout. Use the YAML configs in the repository for the current production settings.
 
 Two datasets are covered:
 
@@ -231,10 +231,10 @@ Full intermediate stage files, including `run_id`, `stage`, `task_key`, `target_
 If you use the crosswalks or code, please cite:
 
 ```bibtex
-@article{[cite key],
-  title   = {[Title]},
-  author  = {[Authors]},
-  journal = {[Journal]},
-  year    = {[Year]},
+@article{einian2026onet,
+  title  = {Mapping O*NET Tasks to ISCO Occupations using Text Similarity},
+  author = {Einian, Majid},
+  year   = {2026},
+  note   = {Working paper}
 }
 ```
