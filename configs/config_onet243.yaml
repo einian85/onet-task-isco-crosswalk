@@ -1,0 +1,46 @@
+# O*NET 24.3 — SOC10 taxonomy
+dataset_name: ONET243
+checkpoint_prefix: ONET243
+final_output_path: output/ONET243_task_to_ISCO_crosswalk.csv
+onet_tasks_path: data/onet/24_3/Task Statements.xlsx
+onet_tasks_dwa_path: data/onet/24_3/Tasks to DWAs.xlsx
+onet_release: db_24_3_excel
+# soc_version: soc10
+# ── Query-side blend weights ──────────────────────────────────────────
+use_task_ids: true
+output_dir: results
+esco_skills_path: data/esco/skills_en.csv
+esco_occupation_rel_path: data/esco/occupationSkillRelations_en.csv
+esco_occupations_path: data/esco/occupations_en.csv
+data_version: managed-occupation-standards
+esco_release: ESCO_en
+isco_level: 4
+random_seed: 42
+include_soc_title: true
+w_soc_title: 0.375
+w_dwa: 0.2656
+include_esco_skills: true
+isco_tasks_path: data/isco/ISCO-08 EN Structure and definitions.xlsx
+embedding_model: all-mpnet-base-v2
+normalize_embeddings: true
+w_isco: 0.375
+w_isco_task: 0.7344
+w_occ: 0.1562
+embedding_cache_dir: checkpoints
+faiss_index_type: FlatIP
+k_retrieve: 5
+keep_best_per_task: true
+min_sim: 0.45
+margin_best: 0.03
+max_links_per_task: 1
+enforce_isco_coverage: true
+coverage_backfill_strategy: best_task_for_missing_isco
+enable_overload_control: true
+overload_abs: 200
+overload_quantile: 0.95
+overload_min_sim: 0.55
+overload_margin_best: 0.02
+softmax_temperature: 0.05
+lowconf_gap_threshold: 0.01
+lowconf_entropy_threshold: 1.2
+limit_tasks: null

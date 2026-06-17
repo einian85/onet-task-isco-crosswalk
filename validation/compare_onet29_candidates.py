@@ -179,7 +179,7 @@ def _candidate_output_path(label: str) -> Path:
 
 
 def build_candidate_configs() -> list[dict[str, object]]:
-    base_cfg = load_config(PROJECT_DIR / "config_onet29.yaml")
+    base_cfg = load_config(PROJECT_DIR / "config_onet292.yaml")
     built: list[dict[str, object]] = []
     for item in CANDIDATES:
         label = str(item["label"])

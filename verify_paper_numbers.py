@@ -55,8 +55,8 @@ def read_yaml_simple(path):
                 result[k] = v
     return result
 
-cfg = read_yaml_simple(BASE / 'config_onet29.yaml')
-print(f"\n[4] Production config (config_onet29.yaml):")
+cfg = read_yaml_simple(BASE / 'config_onet292.yaml')
+print(f"\n[4] Production config (config_onet292.yaml):")
 print(f"    w_soc_title:  {cfg.get('w_soc_title')}  (SOC title weight in query)")
 print(f"    w_isco:       {cfg.get('w_isco')}   (ISCO task weight in target)")
 print(f"    w_dwa:        {cfg.get('w_dwa')}   (DWA weight)")

@@ -7,6 +7,15 @@ from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
+
+def read_onet_file(path: str | Path) -> "pd.DataFrame":
+    """Read an O*NET data file — xlsx for v20.1+, tab-delimited txt for older versions."""
+    if Path(path).suffix.lower() == ".txt":
+        return pd.read_csv(path, sep="\t", dtype=str, encoding="utf-8", low_memory=False)
+    return pd.read_excel(path)
+
 try:
     import yaml  # type: ignore
 except ImportError:
@@ -22,7 +31,6 @@ class RunConfig:
     final_output_path: str
     onet_tasks_path: str
     onet_tasks_dwa_path: str
-    onet_tasks_cat_path: str
     esco_skills_path: str
     esco_occupation_rel_path: str
     esco_occupations_path: str
@@ -214,13 +222,16 @@ def compute_input_hashes(cfg: RunConfig) -> dict[str, Any]:
     keys = [
         "onet_tasks_path",
         "onet_tasks_dwa_path",
-        "onet_tasks_cat_path",
         "esco_skills_path",
         "esco_occupation_rel_path",
         "esco_occupations_path",
         "isco_tasks_path",
     ]
-    return {key: file_signature(getattr(cfg, key)) for key in keys}
+    result = {}
+    for key in keys:
+        path = getattr(cfg, key)
+        result[key] = file_signature(path) if Path(path).exists() else {"path": str(path), "missing": True}
+    return result
 
 
 

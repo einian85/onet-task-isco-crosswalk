@@ -15,21 +15,23 @@ Pre-computed crosswalk files are in [`output/`](output/). The sections below des
 
 Each O*NET task statement is mapped to exactly one ISCO-08 4-digit unit group using dual-side Sentence-BERT (`all-mpnet-base-v2`) embeddings and FAISS retrieval. The query embedding blends the task text with Detailed Work Activity (DWA) labels and the SOC occupation title; the target embedding blends ISCO-08 official descriptions and task items with ESCO occupation text and ESCO skills. Candidates pass through five filtering stages: retrieval -> task-filter -> coverage -> overload -> final.
 
-Each task is assigned to exactly one ISCO-08 unit group. Coverage backfill ensures missing ISCO groups are represented using only unassigned tasks, so the one-to-one property is preserved throughout. Use the YAML configs in the repository for the current production settings.
+Each task is assigned to exactly one ISCO-08 unit group. Coverage backfill ensures missing ISCO groups are represented using only unassigned tasks, so the one-to-one property is preserved throughout.
 
-Two datasets are covered:
+All 63 O*NET releases from v4.0 (2001) through v30.3 (2025) are covered, spanning five SOC taxonomy generations:
 
-| Config | O*NET release | SOC version | Output |
-|--------|---------------|-------------|--------|
-| `config_onet29.yaml` | 29.2 | SOC 2018 | `output/ONET29_task_to_ISCO_crosswalk.csv` |
-| `config_onet25.yaml` | 25.0 | SOC 2010 | `output/ONET25_task_to_ISCO_crosswalk.csv` |
+| SOC generation | O*NET versions | Notes |
+|----------------|---------------|-------|
+| Pre-2006 SOC | v4.0–v9.x | Text format only; occupation titles from `Occupation Data.txt` |
+| SOC 2006 | v10.0–v13.x | Text format only |
+| SOC 2009 | v14.0–v15.0 | Text format only |
+| SOC 2010 | v15.1–v25.0 | Text format only through v20.0; Excel from v20.1 |
+| SOC 2018 | v25.1–v30.3 | Excel format |
 
-Current headline settings:
+Production blend weights (all versions share the same settings):
 
-| Config | `w_soc_title` | `w_dwa` | `w_isco` | `w_isco_task` | `w_occ` | `max_links_per_task` |
-|--------|---------------|---------|----------|---------------|---------|----------------------|
-| `config_onet29.yaml` | 0.375 | 0.2656 | 0.375 | 0.7344 | 0.1562 | 1 |
-| `config_onet25.yaml` | 0.375 | 0.2656 | 0.375 | 0.7344 | 0.1562 | 1 |
+| `w_soc_title` | `w_dwa` | `w_isco` | `w_isco_task` | `w_occ` | `max_links_per_task` |
+|---------------|---------|----------|---------------|---------|----------------------|
+| 0.375 | 0.2656 | 0.375 | 0.7344 | 0.1562 | 1 |
 
 ---
 
@@ -43,15 +45,20 @@ Current headline settings:
 |-- metrics_unsup.py          # Unsupervised similarity metrics
 |-- stability.py              # Cross-run stability analysis
 |
-|-- config_onet29.yaml        # Production config - O*NET 29.2
-|-- config_onet25.yaml        # Production config - O*NET 25.0
+|-- run_all_versions.py       # Run pipeline for all (or selected) O*NET versions
+|-- generate_configs.py       # Generate configs/config_onet*.yaml for all versions
+|-- download_onet_versions.py # Download and normalise all O*NET release zips
 |
-|-- 1_run_onet29.py           # Step 1a: run pipeline for O*NET 29.2
-|-- 2_run_onet25.py           # Step 1b: run pipeline for O*NET 25.0
-|-- 3_report_occupation.py    # Step 2: occupation-level comparison vs reference crosswalks
-|-- 4_report_publication.py   # Step 3: generate publication tables and figures
-|-- 5_export_latex.py         # Step 4: export tables to LaTeX
-|-- verify_paper_numbers.py   # Verify all numbers cited in the paper
+|-- report_occupation.py      # Occupation-level comparison vs reference crosswalks
+|-- report_publication.py     # Publication tables and figures
+|-- export_latex.py           # Export tables to LaTeX fragments
+|-- verify_paper_numbers.py   # Sanity-check all numbers cited in the paper
+|
+|-- configs/                  # One YAML per O*NET release (v4.0–v30.3)
+|   |-- config_onet40.yaml
+|   |-- config_onet50.yaml
+|   |   ...
+|   `-- config_onet303.yaml
 |
 |-- sweep.py                  # Sweep engine (random configs, Pareto scoring)
 |-- sweep/
@@ -61,9 +68,10 @@ Current headline settings:
 |   |-- _sweep_stats.py                # Sweep diagnostics
 |   `-- _trace_rounds.py               # Trace adaptive sweep rounds
 |
-|-- output/
-|   |-- ONET29_task_to_ISCO_crosswalk.csv   # Pre-computed (O*NET 29.2)
-|   `-- ONET25_task_to_ISCO_crosswalk.csv   # Pre-computed (O*NET 25.0)
+|-- output/                   # Pre-computed crosswalk CSVs (one per O*NET release)
+|   |-- ONET292_task_to_ISCO_crosswalk.csv
+|   |   ...
+|   `-- ONET40_task_to_ISCO_crosswalk.csv
 |
 |-- validation/
 |   |-- shared.py                      # Shared paths and loaders
@@ -72,7 +80,6 @@ Current headline settings:
 |   |-- evaluate_annotations.py        # Approach 2b: evaluate filled workbook
 |   `-- results/
 |       |-- chain_eval_onet29_overall.csv
-|       |-- chain_eval_onet25_overall.csv
 |       |-- human_eval_onet29.csv
 |       |-- human_eval_onet29_summary.csv
 |       `-- annotation_workbook_onet29.xlsx
@@ -109,8 +116,15 @@ Key package versions used in the paper:
 Source data is not included in this repository. Download and place files as follows:
 
 **O*NET** (<https://www.onetcenter.org/database.html>):
-- O*NET 29.2 -> extract `Task Statements.xlsx`, `Tasks to DWAs.xlsx`, `Task Categories.xlsx` into `data/onet/29_2/`
-- O*NET 25.0 -> same files into `data/onet/25_0/`
+
+All 63 releases can be downloaded and normalised automatically:
+
+```bash
+python download_onet_versions.py        # download all versions
+python download_onet_versions.py --force  # re-download everything
+```
+
+This reads `data/version_list.csv` and places normalised `Task Statements.txt` (or `.xlsx` for v20.1+) and `Tasks to DWAs` files under `data/onet/<major>_<minor>/`.
 
 **ESCO v1.2** (<https://esco.ec.europa.eu/en/use-esco/download>):
 - Download English CSV bulk download -> place `occupations_en.csv`, `skills_en.csv`, `occupationSkillRelations_en.csv` into `data/esco/`
@@ -134,11 +148,19 @@ Source data is not included in this repository. Download and place files as foll
 Run from the repository root:
 
 ```bash
-python 1_run_onet29.py   # produces output/ONET29_task_to_ISCO_crosswalk.csv
-python 2_run_onet25.py   # produces output/ONET25_task_to_ISCO_crosswalk.csv
+python run_all_versions.py                        # all 63 versions (skips existing outputs)
+python run_all_versions.py --force                # re-run everything
+python run_all_versions.py --versions 29.2 25.0  # specific versions only
+python run_all_versions.py --dry-run              # print run order without executing
 ```
 
-Embeddings are cached in `checkpoints/` after the first run. Subsequent runs with the same data and model are near-instant.
+Configs live in `configs/`. To regenerate them (e.g. after changing settings):
+
+```bash
+python generate_configs.py
+```
+
+Embeddings are cached in `checkpoints/` after the first run. ESCO and ISCO source files are cached in-process across versions, so the 63-version run does not reload them repeatedly.
 
 ---
 
@@ -161,10 +183,10 @@ Sweep metrics are written to `results/summary/`; parameter figures are written t
 ## Reproducing the paper tables and figures
 
 ```bash
-python 3_report_occupation.py   # occupation-level comparison -> results/publication/
-python 4_report_publication.py  # parameter sensitivity, stage progression -> results/publication/
-python 5_export_latex.py        # LaTeX table fragments -> results/publication/tables/
-python verify_paper_numbers.py  # sanity-check all numbers cited in the paper
+python report_occupation.py    # occupation-level comparison -> results/publication/
+python report_publication.py   # parameter sensitivity, stage progression -> results/publication/
+python export_latex.py         # LaTeX table fragments -> results/publication/tables/
+python verify_paper_numbers.py # sanity-check all numbers cited in the paper
 ```
 
 ---
@@ -179,7 +201,7 @@ Two validation approaches are documented in the paper:
 cd validation && python validate_chain.py
 ```
 
-Results: `validation/results/chain_eval_onet29_overall.csv`, `validation/results/chain_eval_onet25_overall.csv`
+Results: `validation/results/chain_eval_onet{tag}_overall.csv` (one file per selected release; tags: 251, 292, 303, 151, 200, 250)
 
 **Approach 2 - Human expert annotation**:
 
@@ -195,13 +217,12 @@ The workbook intentionally excludes model predictions to avoid biasing annotatio
 
 ### Key validation results
 
-| Metric | O*NET 29.2 | O*NET 25.0 |
-|--------|-----------|-----------|
-| Chain crosswalk agreement, lenient union | 68.0% exact; 88.4% major-group | 49.4% exact; 74.2% major-group |
-| Human expert annotation (n=108) | 36.1% exact; 57.4% sub-major; 72.2% major-group | not evaluated |
-| Current `w_soc_title` | 0.375 | 0.375 |
+| Metric | O*NET 29.2 |
+|--------|-----------|
+| Chain crosswalk agreement, lenient union | 68.0% exact; 88.4% major-group |
+| Human expert annotation (n=108) | 36.1% exact; 57.4% sub-major; 72.2% major-group |
 
-The final O*NET 29.2 mapping currently assigns tasks to 435 of 436 ISCO-08 unit groups. The missing unit group is ISCO 7516, Tobacco Preparers and Tobacco Products Makers.
+Chain crosswalk validation is available for all 63 releases. The O*NET 29.2 mapping assigns tasks to 435 of 436 ISCO-08 unit groups; the only missing group is ISCO 7516 (Tobacco Preparers and Tobacco Products Makers).
 
 ---
 

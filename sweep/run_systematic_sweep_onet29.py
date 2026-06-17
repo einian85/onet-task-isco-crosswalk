@@ -50,7 +50,7 @@ from pipeline import run_pipeline
 from sweep import _add_composite_score, _add_pareto_flag, _flatten_config
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_CONFIG  = str(ROOT_DIR / "config_onet29.yaml")
+BASE_CONFIG  = str(ROOT_DIR / "config_onet292.yaml")
 SUMMARY_DIR  = ROOT_DIR / "results" / "summary"
 SUMMARY_PATH = SUMMARY_DIR / "sweep_results_metrics_only.csv"
 SUMMARY_DIR.mkdir(parents=True, exist_ok=True)

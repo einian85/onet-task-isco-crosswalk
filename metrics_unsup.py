@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from config import RunConfig, compute_overload_threshold
+from config import RunConfig, compute_overload_threshold, read_onet_file
 
 _TASK_TOTAL_CACHE: dict[tuple[str, bool, int | None], int] = {}
 
@@ -17,7 +17,7 @@ def _task_universe_size(cfg: RunConfig) -> int:
     if cached is not None:
         return cached
 
-    df_tasks = pd.read_excel(cfg.onet_tasks_path, usecols=["Task ID", "Task"])
+    df_tasks = read_onet_file(cfg.onet_tasks_path)[["Task ID", "Task"]]
     if cfg.limit_tasks is not None:
         df_tasks = df_tasks.head(cfg.limit_tasks).copy()
     if cfg.use_task_ids:

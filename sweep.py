@@ -257,8 +257,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument(
         "--config",
-        default=str(Path(__file__).resolve().with_name("config_onet29.yaml")),
-        help="Path to the baseline YAML or JSON config. Defaults to config_onet29.yaml.",
+        default=str(Path(__file__).resolve().with_name("config_onet292.yaml")),
+        help="Path to the baseline YAML or JSON config. Defaults to config_onet292.yaml.",
     )
     parser.add_argument(
         "--spec",

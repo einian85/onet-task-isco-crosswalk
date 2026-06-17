@@ -10,42 +10,31 @@ Validates pipeline ISCO predictions by tracing the chain:
 If the pipeline's predicted ISCO falls within the acceptable ISCO set for
 that SOC code (as defined by the crosswalk), it counts as a "hit".
 
-Two pipeline variants are evaluated — task IDs do NOT overlap across O*NET
-releases because the underlying SOC version differs:
+SOC taxonomy generations:
+    SOC 2010: O*NET ≤25.0   → crosswalks ESCO-ONET-MHV + SOC10-ISCO-BLS
+    SOC 2018: O*NET ≥25.1   → crosswalks ESCO-SOC18 + SOC18-ESCO
 
-    ONET29 (O*NET 29.2 / SOC18) → crosswalks ESCO-SOC18 + SOC18-ESCO
-    ONET25 (O*NET 25.0 / SOC10) → crosswalks ESCO-ONET-MHV + SOC10-ISCO-BLS
+Selected releases evaluated (3 per SOC era):
+    SOC 2018: 25.1 (first SOC 2018 release), 29.2 (parameter selection), 30.3 (latest)
+    SOC 2010: 15.1 (first SOC 2010 release), 20.0 (mid-era), 25.0 (last SOC 2010)
 
-For the ONET29 / SOC18 pipeline we run four crosswalk scenarios:
-
+For each SOC 2018 release we run four crosswalk scenarios:
     A1  ESCO-SOC18 alone
     A2  SOC18-ESCO alone
     A3  Strict intersection: ESCO-SOC18 ∩ SOC18-ESCO
-    A4  Lenient union: ESCO-SOC18 ∪ SOC18-ESCO
+    A4  Lenient union:       ESCO-SOC18 ∪ SOC18-ESCO
 
-For the ONET25 / SOC10 pipeline we run four scenarios:
-
+For each SOC 2010 release we run four scenarios:
     B1  ESCO-ONET-MHV alone  (semantic; NOTE: less independent — see below)
     B2  SOC10-ISCO-BLS alone  (BLS official)
     B3  Lenient union: ESCO-ONET-MHV ∪ SOC10-ISCO-BLS
     B4  Strict intersection: ESCO-ONET-MHV ∩ SOC10-ISCO-BLS
 
-NOTE on ESCO-ONET-MHV: this crosswalk was derived using semantic similarity
-(sentence-transformers), the same approach as the pipeline itself. Therefore
-agreement between the pipeline and ESCO-ONET-MHV is expected to be higher but is
-also less informative as an independent ground-truth signal.
+NOTE on ESCO-ONET-MHV: derived using semantic similarity (same approach as the
+pipeline), so agreement is expected to be higher but is less informative as an
+independent ground-truth signal.
 
-NOTE on IBS Poland: the IBS SOC10-ISCO08 crosswalk is derived from the BLS
-official table and produces near-identical results; it has been dropped to
-avoid redundant scenarios.
-
-Three match tiers are evaluated for every scenario:
-    match_exact       — isco_pred exactly in acceptable ISCO set
-    match_sub_major   — first 2 digits in acceptable sub-majors
-    match_major_group — first digit in acceptable major groups
-
-Each scenario is broken down three ways:
-    Overall summary | By similarity bin | By predicted ISCO major group
+Results are written per version to validation/results/chain_eval_onet{tag}_{suffix}.csv.
 
 Run from the project root:
     python validation/validate_chain.py
@@ -63,35 +52,47 @@ import pandas as pd
 
 from shared import (
     GT_RESULTS_DIR,
-    PIPELINE_ONET29,
-    PIPELINE_ONET25,
     evaluate_match,
     load_onet_tasks,
     load_pipeline,
     load_soc10_crosswalks,
     load_soc18_crosswalks,
+    pipeline_path_for_version,
     summarise_by_major_group,
     summarise_by_sim_bin,
     summarise_match,
 )
 
+# ── Selected releases ──────────────────────────────────────────────────────────
+SOC18_VERSIONS = ["25.1", "29.2", "30.3"]   # first, sweep, latest
+SOC10_VERSIONS = ["15.1", "20.0", "25.0"]   # first, mid, last
+
+SOC18_VERSION_LABELS = {
+    "25.1": "SOC 2018 — O*NET 25.1 (first SOC 2018 release)",
+    "29.2": "SOC 2018 — O*NET 29.2 (release used for parameter selection)",
+    "30.3": "SOC 2018 — O*NET 30.3 (latest release)",
+}
+SOC10_VERSION_LABELS = {
+    "15.1": "SOC 2010 — O*NET 15.1 (first SOC 2010 release)",
+    "20.0": "SOC 2010 — O*NET 20.0 (mid-era)",
+    "25.0": "SOC 2010 — O*NET 25.0 (last SOC 2010 release)",
+}
+
+
+def ver_tag(ver: str) -> str:
+    return ver.replace(".", "")
+
 
 # ── Helper: strict crosswalk (intersection) ───────────────────────────────────
-# Only keeps SOC codes present in BOTH crosswalks.
-# Acceptable ISCOs for a SOC = codes found in BOTH crosswalks.
-# Most conservative / highest-confidence scenario.
 
 def make_strict_xw(xw1: pd.DataFrame, xw2: pd.DataFrame, soc_col: str) -> pd.DataFrame:
     common_socs = set(xw1[soc_col]) & set(xw2[soc_col])
     a = xw1.loc[xw1[soc_col].isin(common_socs), [soc_col, "isco_code"]]
     b = xw2.loc[xw2[soc_col].isin(common_socs), [soc_col, "isco_code"]]
-    # Inner merge on both columns → only codes that appear in BOTH crosswalks
     return pd.merge(a, b, on=[soc_col, "isco_code"]).drop_duplicates().reset_index(drop=True)
 
 
 # ── Helper: lenient crosswalk (union) ─────────────────────────────────────────
-# Acceptable ISCOs for a SOC = codes found in EITHER crosswalk.
-# Most permissive / highest-coverage scenario.
 
 def make_lenient_xw(xw1: pd.DataFrame, xw2: pd.DataFrame, soc_col: str) -> pd.DataFrame:
     return (
@@ -126,119 +127,107 @@ def collect_results(scenario_list: list[dict]) -> dict[str, pd.DataFrame]:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# PART A – ONET pipeline  (O*NET 29.2 / SOC18)
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Load reference crosswalks once ────────────────────────────────────────────
 
-print("\n══ PART A: ONET 29.2 / SOC18 pipeline ════════════════════════════════════")
+print("Loading reference crosswalks …")
+xw18 = load_soc18_crosswalks()
+xw10 = load_soc10_crosswalks()
 
-pipeline_onet = load_pipeline(PIPELINE_ONET29)
-task_soc_onet = load_onet_tasks("29")
-xw18          = load_soc18_crosswalks()
+xw18_1 = xw18["xw18_1"]
+xw18_2 = xw18["xw18_2"]
+xw10_1 = xw10["xw10_1"]
+xw10_2 = xw10["xw10_2"]
 
-xw18_1   = xw18["xw18_1"]
-xw18_2   = xw18["xw18_2"]
-xw18_2hq = xw18_2[xw18_2["type_of_match"] != "broadMatch"]  # high-quality only
-
-print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_onet):,}")
-print(f"  O*NET task→SOC rows (29.2): {len(task_soc_onet):,}")
-print(f"  XW-ESCO-SOC18 rows:               {len(xw18_1):,}")
-print(f"  XW-SOC18-ESCO rows (all):         {len(xw18_2):,}")
-print(f"  XW-SOC18-ESCO rows (HQ only):     {len(xw18_2hq):,}")
-
-print("\n  XW-SOC18-ESCO match type distribution:")
-print(xw18_2["type_of_match"].value_counts().to_string())
-
-scenarios_onet = [
-    # A1: ESCO-SOC18 alone
-    run_scenario(pipeline_onet, task_soc_onet,
-                 xw18_1[["soc_code18", "isco_code"]],
-                 "soc_code18", "A1 – ESCO-SOC18 alone"),
-
-    # A2: SOC18-ESCO alone (all match types incl. broadMatch)
-    run_scenario(pipeline_onet, task_soc_onet,
-                 xw18_2[["soc_code18", "isco_code"]],
-                 "soc_code18", "A2 – SOC18-ESCO alone"),
-
-    # A3: Strict intersection ESCO-SOC18 ∩ SOC18-ESCO
-    run_scenario(pipeline_onet, task_soc_onet,
-                 make_strict_xw(xw18_1[["soc_code18", "isco_code"]],
-                                xw18_2[["soc_code18", "isco_code"]], "soc_code18"),
-                 "soc_code18", "A3 – Strict intersection"),
-
-    # A4: Lenient union ESCO-SOC18 ∪ SOC18-ESCO
-    run_scenario(pipeline_onet, task_soc_onet,
-                 make_lenient_xw(xw18_1[["soc_code18", "isco_code"]],
-                                 xw18_2[["soc_code18", "isco_code"]], "soc_code18"),
-                 "soc_code18", "A4 – Lenient union"),
-]
-
-results_onet = collect_results(scenarios_onet)
-
-print("\n─── Overall match rates (ONET29 / SOC18) ────────────────────────────────")
-print(results_onet["overall"].to_string(index=False))
-print("\n─── By similarity bin ────────────────────────────────────────────────────")
-print(results_onet["by_sim_bin"].to_string(index=False))
-print("\n─── By predicted ISCO major group ────────────────────────────────────────")
-print(results_onet["by_major_group"].to_string(index=False))
+print(f"  XW18.1 (ESCO-SOC18):          {len(xw18_1):,} rows")
+print(f"  XW18.2 (SOC18-ESCO, all):     {len(xw18_2):,} rows")
+print(f"  XW10.1 (ESCO-ONET-MHV):       {len(xw10_1):,} rows  [less independent]")
+print(f"  XW10.2 (SOC10-ISCO-BLS):      {len(xw10_2):,} rows")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PART B – ONET25 pipeline  (O*NET 25.0 / SOC10)
+# PART A – SOC 2018 releases  (O*NET 25.1, 29.2, 30.3)
 # ══════════════════════════════════════════════════════════════════════════════
 
-print("\n══ PART B: ONET25 / SOC10 pipeline ═══════════════════════════════════════")
+for ver in SOC18_VERSIONS:
+    tag = ver_tag(ver)
+    print(f"\n══ SOC 2018: O*NET {ver} ({'first' if ver == '25.1' else 'sweep' if ver == '29.2' else 'latest'}) ══")
 
-pipeline_oneto = load_pipeline(PIPELINE_ONET25)
-task_soc_oneto = load_onet_tasks("25")
-xw10           = load_soc10_crosswalks()
+    pipeline_df = load_pipeline(pipeline_path_for_version(ver))
+    task_soc    = load_onet_tasks(ver)
 
-xw10_1 = xw10["xw10_1"]  # ESCO↔O*NET semantic  (less independent — treat with caution)
-xw10_2 = xw10["xw10_2"]  # BLS official
+    print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_df):,}")
+    print(f"  O*NET task→SOC rows:        {len(task_soc):,}")
 
-print(f"  Pipeline tasks (S5_FINAL):        {len(pipeline_oneto):,}")
-print(f"  O*NET task→SOC rows (25.0):       {len(task_soc_oneto):,}")
-print(f"  ESCO-ONET-MHV rows (semantic):    {len(xw10_1):,}  [less independent]")
-print(f"  SOC10-ISCO-BLS rows (BLS):        {len(xw10_2):,}")
+    scenarios = [
+        run_scenario(pipeline_df, task_soc,
+                     xw18_1[["soc_code18", "isco_code"]],
+                     "soc_code18", "A1 – ESCO-SOC18 alone"),
 
-scenarios_oneto = [
-    # B1: ESCO-ONET-MHV alone (semantic; less independent as ground truth)
-    run_scenario(pipeline_oneto, task_soc_oneto,
-                 xw10_1, "soc_code10",
-                 "B1 – ESCO-ONET-MHV alone (semantic, less independent)"),
+        run_scenario(pipeline_df, task_soc,
+                     xw18_2[["soc_code18", "isco_code"]],
+                     "soc_code18", "A2 – SOC18-ESCO alone"),
 
-    # B2: SOC10-ISCO-BLS alone (BLS official)
-    run_scenario(pipeline_oneto, task_soc_oneto,
-                 xw10_2, "soc_code10",
-                 "B2 – SOC10-ISCO-BLS alone"),
+        run_scenario(pipeline_df, task_soc,
+                     make_strict_xw(xw18_1[["soc_code18", "isco_code"]],
+                                    xw18_2[["soc_code18", "isco_code"]], "soc_code18"),
+                     "soc_code18", "A3 – Strict intersection"),
 
-    # B3: Lenient union ESCO-ONET-MHV ∪ SOC10-ISCO-BLS
-    run_scenario(pipeline_oneto, task_soc_oneto,
-                 make_lenient_xw(xw10_1, xw10_2, "soc_code10"),
-                 "soc_code10", "B3 – Lenient union (MHV ∪ BLS)"),
+        run_scenario(pipeline_df, task_soc,
+                     make_lenient_xw(xw18_1[["soc_code18", "isco_code"]],
+                                     xw18_2[["soc_code18", "isco_code"]], "soc_code18"),
+                     "soc_code18", "A4 – Lenient union"),
+    ]
 
-    # B4: Strict intersection ESCO-ONET-MHV ∩ SOC10-ISCO-BLS
-    run_scenario(pipeline_oneto, task_soc_oneto,
-                 make_strict_xw(xw10_1, xw10_2, "soc_code10"),
-                 "soc_code10", "B4 – Strict intersection (MHV ∩ BLS)"),
-]
+    results = collect_results(scenarios)
+    print("\n  Overall:")
+    print(results["overall"].to_string(index=False))
 
-results_oneto = collect_results(scenarios_oneto)
-
-print("\n─── Overall match rates (ONET25 / SOC10) ────────────────────────────────")
-print(results_oneto["overall"].to_string(index=False))
-print("\n─── By similarity bin ────────────────────────────────────────────────────")
-print(results_oneto["by_sim_bin"].to_string(index=False))
-print("\n─── By predicted ISCO major group ────────────────────────────────────────")
-print(results_oneto["by_major_group"].to_string(index=False))
-
-
-# ── Write results to CSV ──────────────────────────────────────────────────────
-
-for stem, results in [("onet29", results_onet), ("onet25", results_oneto)]:
     for suffix, df in results.items():
-        path = GT_RESULTS_DIR / f"chain_eval_{stem}_{suffix}.csv"
+        path = GT_RESULTS_DIR / f"chain_eval_onet{tag}_{suffix}.csv"
         df.to_csv(path, index=False)
+    print(f"  → chain_eval_onet{tag}_*.csv")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PART B – SOC 2010 releases  (O*NET 15.1, 20.0, 25.0)
+# ══════════════════════════════════════════════════════════════════════════════
+
+for ver in SOC10_VERSIONS:
+    tag = ver_tag(ver)
+    print(f"\n══ SOC 2010: O*NET {ver} ({'first' if ver == '15.1' else 'mid' if ver == '20.0' else 'last'}) ══")
+
+    pipeline_df = load_pipeline(pipeline_path_for_version(ver))
+    task_soc    = load_onet_tasks(ver)
+
+    print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_df):,}")
+    print(f"  O*NET task→SOC rows:        {len(task_soc):,}")
+
+    scenarios = [
+        run_scenario(pipeline_df, task_soc,
+                     xw10_1, "soc_code10",
+                     "B1 – ESCO-ONET-MHV alone (semantic, less independent)"),
+
+        run_scenario(pipeline_df, task_soc,
+                     xw10_2, "soc_code10",
+                     "B2 – SOC10-ISCO-BLS alone"),
+
+        run_scenario(pipeline_df, task_soc,
+                     make_lenient_xw(xw10_1, xw10_2, "soc_code10"),
+                     "soc_code10", "B3 – Lenient union (MHV ∪ BLS)"),
+
+        run_scenario(pipeline_df, task_soc,
+                     make_strict_xw(xw10_1, xw10_2, "soc_code10"),
+                     "soc_code10", "B4 – Strict intersection (MHV ∩ BLS)"),
+    ]
+
+    results = collect_results(scenarios)
+    print("\n  Overall:")
+    print(results["overall"].to_string(index=False))
+
+    for suffix, df in results.items():
+        path = GT_RESULTS_DIR / f"chain_eval_onet{tag}_{suffix}.csv"
+        df.to_csv(path, index=False)
+    print(f"  → chain_eval_onet{tag}_*.csv")
+
 
 print(f"\nAll results written to: {GT_RESULTS_DIR}")
-print("Files: chain_eval_onet29_*.csv, chain_eval_onet25_*.csv")

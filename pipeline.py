@@ -23,6 +23,7 @@ from config import (
     compute_run_id,
     get_code_version,
     load_config,
+    read_onet_file,
     save_config,
     save_manifest,
     stable_hash,
@@ -42,6 +43,13 @@ _EMBEDDING_MEM_CACHE: dict[str, "np.ndarray"] = {}
 # in newer transformers versions; caching it here avoids repeated network calls
 # and prevents segfaults from the offline/cached code path.
 _MODEL_CACHE: dict[str, "SentenceTransformer"] = {}
+
+# Cross-version text-level embedding store.
+# Key: embedding model name → dict mapping sha1(text) → raw embedding vector.
+# Texts shared across O*NET versions (same task wording, same SOC title, same DWA
+# label) are encoded only once regardless of how many versions use them.
+# Populated lazily from disk; persisted after each new batch of encodings.
+_TEXT_STORE: dict[str, dict[str, "np.ndarray"]] = {}
 
 # In-process cache for loaded source dataframes.
 # Key: stable_hash of the relevant config fields (data paths + loading options).
@@ -111,6 +119,39 @@ def raw_checkpoint_path(cfg: RunConfig, name: str) -> Path:
     return _embedding_cache_dir(cfg) / f"{name}_{fp}.pkl"
 
 
+def _text_store_path(cfg: RunConfig) -> Path:
+    model_slug = cfg.embedding_model.replace("/", "_").replace("-", "_")
+    return _embedding_cache_dir(cfg) / f"text_store_{model_slug}.pkl"
+
+
+def _load_text_store(cfg: RunConfig) -> dict[str, np.ndarray]:
+    """Return the in-process text store, loading from disk on first access."""
+    key = cfg.embedding_model
+    if key not in _TEXT_STORE:
+        path = _text_store_path(cfg)
+        if path.exists():
+            try:
+                with path.open("rb") as f:
+                    _TEXT_STORE[key] = pickle.load(f)
+                print(f"Text store loaded: {len(_TEXT_STORE[key])} entries ({path.name})")
+            except Exception:
+                print(f"Corrupt text store — starting fresh.")
+                _TEXT_STORE[key] = {}
+        else:
+            _TEXT_STORE[key] = {}
+    return _TEXT_STORE[key]
+
+
+def _save_text_store(cfg: RunConfig) -> None:
+    store = _TEXT_STORE.get(cfg.embedding_model, {})
+    path = _text_store_path(cfg)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("wb") as f:
+        pickle.dump(store, f, protocol=pickle.HIGHEST_PROTOCOL)
+    tmp.replace(path)
+    print(f"Text store saved: {len(store)} entries ({path.name})")
+
+
 def is_valid_embedding(emb, expected_rows: int | None = None, expected_dim: int | None = None) -> bool:
     if emb is None or not hasattr(emb, "shape") or len(emb.shape) != 2:
         return False
@@ -166,7 +207,7 @@ def build_task_text(df_tasks: pd.DataFrame, cfg: RunConfig) -> pd.DataFrame:
 
 def build_task_table(cfg: RunConfig) -> pd.DataFrame:
     """Load O*NET tasks. DWAs are no longer concatenated into task_text."""
-    df_tasks = pd.read_excel(cfg.onet_tasks_path)[
+    df_tasks = read_onet_file(cfg.onet_tasks_path)[
         ["O*NET-SOC Code", "Title", "Task ID", "Task", "Task Type"]
     ]
     if cfg.limit_tasks is not None:
@@ -191,8 +232,16 @@ def load_dwa_long(cfg: RunConfig, df_tasks: pd.DataFrame) -> pd.DataFrame:
 
     DWA items are embedded individually and averaged per task so that tasks
     with many DWAs are not over-represented relative to tasks with few DWAs.
+    Returns an empty DataFrame if the DWA file is absent (pipeline falls back
+    to w_dwa=0 automatically in build_embeddings).
     """
-    df_dwa_raw = pd.read_excel(cfg.onet_tasks_dwa_path)[["Task ID", "DWA Title"]].dropna(
+    if not Path(cfg.onet_tasks_dwa_path).exists():
+        print(f"  DWA file not found ({cfg.onet_tasks_dwa_path}) — running without DWA blend.")
+        return pd.DataFrame(columns=["task_id", "dwa_title"])
+    _raw = read_onet_file(cfg.onet_tasks_dwa_path)
+    # v30.3+ renamed "DWA Title" → "DWA Element Name"
+    title_col = "DWA Title" if "DWA Title" in _raw.columns else "DWA Element Name"
+    df_dwa_raw = _raw[["Task ID", title_col]].rename(columns={title_col: "DWA Title"}).dropna(
         subset=["DWA Title"]
     )
     if cfg.use_task_ids:
@@ -200,7 +249,7 @@ def load_dwa_long(cfg: RunConfig, df_tasks: pd.DataFrame) -> pd.DataFrame:
         df["task_id"] = df["Task ID"].astype(str)
     else:
         # task_id is a hash of Task text — bridge via Task ID → Task text → hash
-        df_task_ids = pd.read_excel(cfg.onet_tasks_path)[["Task ID", "Task"]].drop_duplicates()
+        df_task_ids = read_onet_file(cfg.onet_tasks_path)[["Task ID", "Task"]].drop_duplicates()
         df = df_dwa_raw.merge(df_task_ids, on="Task ID", how="left")
         df["task_id"] = df["Task"].astype(str).map(stable_task_hash)
     valid_ids = set(df_tasks["task_id"].astype(str))
@@ -213,37 +262,50 @@ def load_dwa_long(cfg: RunConfig, df_tasks: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-# ── ESCO loaders ──────────────────────────────────────────────────────────────
+# ── ESCO / ISCO loaders with in-process cache ─────────────────────────────────
+# These files never change between O*NET versions; caching avoids re-reading
+# them on every pipeline call when run_all_versions.py runs sequentially.
+
+_ESCO_OCC_CACHE:    dict[str, pd.DataFrame] = {}
+_ESCO_SKILL_CACHE:  dict[tuple[str, str, str], pd.DataFrame] = {}
+_ISCO_STD_CACHE:    dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
+
 
 def load_esco_occupations(cfg: RunConfig) -> pd.DataFrame:
     """Return ESCO occupation table: occupationUri, occupationLabel, occupationDescription, iscoGroup."""
-    return pd.read_csv(cfg.esco_occupations_path)[
-        ["conceptUri", "preferredLabel", "description", "iscoGroup"]
-    ].rename(columns={
-        "conceptUri": "occupationUri",
-        "preferredLabel": "occupationLabel",
-        "description": "occupationDescription",
-    }).reset_index(drop=True)
+    key = cfg.esco_occupations_path
+    if key not in _ESCO_OCC_CACHE:
+        _ESCO_OCC_CACHE[key] = pd.read_csv(cfg.esco_occupations_path)[
+            ["conceptUri", "preferredLabel", "description", "iscoGroup"]
+        ].rename(columns={
+            "conceptUri": "occupationUri",
+            "preferredLabel": "occupationLabel",
+            "description": "occupationDescription",
+        }).reset_index(drop=True)
+    return _ESCO_OCC_CACHE[key]
 
 
 def load_esco_skills_long(cfg: RunConfig) -> pd.DataFrame:
     """Return unique (iscoGroup, preferredLabel) skill pairs across all ESCO occupations."""
-    df_skills = pd.read_csv(cfg.esco_skills_path)[["conceptUri", "preferredLabel"]].rename(
-        columns={"conceptUri": "skillUri"}
-    )
-    df_rel = pd.read_csv(cfg.esco_occupation_rel_path)[["occupationUri", "skillUri"]]
-    df_occ_grp = pd.read_csv(cfg.esco_occupations_path)[["conceptUri", "iscoGroup"]].rename(
-        columns={"conceptUri": "occupationUri"}
-    )
-    return (
-        df_rel
-        .merge(df_skills, on="skillUri", how="left")
-        .merge(df_occ_grp, on="occupationUri", how="left")
-        [["iscoGroup", "preferredLabel"]]
-        .dropna(subset=["iscoGroup", "preferredLabel"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
+    key = (cfg.esco_skills_path, cfg.esco_occupation_rel_path, cfg.esco_occupations_path)
+    if key not in _ESCO_SKILL_CACHE:
+        df_skills = pd.read_csv(cfg.esco_skills_path)[["conceptUri", "preferredLabel"]].rename(
+            columns={"conceptUri": "skillUri"}
+        )
+        df_rel = pd.read_csv(cfg.esco_occupation_rel_path)[["occupationUri", "skillUri"]]
+        df_occ_grp = pd.read_csv(cfg.esco_occupations_path)[["conceptUri", "iscoGroup"]].rename(
+            columns={"conceptUri": "occupationUri"}
+        )
+        _ESCO_SKILL_CACHE[key] = (
+            df_rel
+            .merge(df_skills, on="skillUri", how="left")
+            .merge(df_occ_grp, on="occupationUri", how="left")
+            [["iscoGroup", "preferredLabel"]]
+            .dropna(subset=["iscoGroup", "preferredLabel"])
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+    return _ESCO_SKILL_CACHE[key]
 
 
 # ── ISCO-08 standard loaders ──────────────────────────────────────────────────
@@ -257,6 +319,8 @@ def load_isco_standard(cfg: RunConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         df_task_items — one row per lettered task item within each group,
                         columns: isco_code, task_item_id (e.g. '8341_a'), task_text
     """
+    if cfg.isco_tasks_path in _ISCO_STD_CACHE:
+        return _ISCO_STD_CACHE[cfg.isco_tasks_path]
     xl = pd.read_excel(cfg.isco_tasks_path, sheet_name=0)
     unit = xl[xl["Level"] == 4].copy()
     unit["isco_code"] = unit["ISCO 08 Code"].astype(str).str.strip()
@@ -299,6 +363,7 @@ def load_isco_standard(cfg: RunConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         else pd.DataFrame(columns=["isco_code", "task_item_id", "task_text"])
     )
     print(f"  ISCO standard: {len(df_groups)} groups, {len(df_task_items)} task items")
+    _ISCO_STD_CACHE[cfg.isco_tasks_path] = (df_groups, df_task_items)
     return df_groups, df_task_items
 
 
@@ -312,35 +377,65 @@ def embed_texts(
     normalize_output: bool = False,
     expected_dim: int | None = None,
 ):
-    """Embed texts using the shared Tier-1 weight-independent cache."""
+    """Embed texts with a three-level cache.
+
+    Level 1 — in-process array cache (keyed by version checkpoint path):
+        Free hit for sweep variants that reuse the same version data.
+    Level 2 — per-version matrix checkpoint on disk:
+        Avoids reassembling the matrix on subsequent runs of the same version.
+    Level 3 — cross-version text store on disk (keyed by sha1 of each string):
+        Texts shared across O*NET versions are encoded only once. Any new texts
+        not yet in the store are encoded in a single batch, then the store is
+        updated. The assembled matrix is then written as the version checkpoint.
+    """
     path = raw_checkpoint_path(cfg, cache_name)
     cache_key = str(path)
 
-    # Fast path: already in process memory (subsequent sweep variants)
+    # Level 1: in-process memory
     if cache_key in _EMBEDDING_MEM_CACHE:
         emb = _EMBEDDING_MEM_CACHE[cache_key]
-        print(f"{cache_name} shape: {emb.shape} (cached)")
+        print(f"{cache_name} shape: {emb.shape} (mem-cached)")
         return emb
 
+    # Level 2: version matrix checkpoint
     emb = None
     if path.exists():
-        print(f"Loading checkpoint: {path}")
         try:
             with path.open("rb") as f:
                 emb = pickle.load(f)
+            if not is_valid_embedding(emb, expected_rows=len(texts), expected_dim=expected_dim):
+                emb = None
+                path.unlink(missing_ok=True)
         except Exception:
-            print(f"Corrupt checkpoint {path} — recomputing.")
+            print(f"Corrupt checkpoint {path} — rebuilding.")
             path.unlink(missing_ok=True)
-    if not is_valid_embedding(emb, expected_rows=len(texts), expected_dim=expected_dim):
-        print(f"Recomputing embeddings for {cache_name}.")
-        emb = model.encode(texts, batch_size=64, show_progress_bar=True)
+
+    if emb is None:
+        # Level 3: text store — encode only genuinely new strings
+        store = _load_text_store(cfg)
+        hashes = [stable_task_hash(t) for t in texts]
+        uncached = list(dict.fromkeys(t for t, h in zip(texts, hashes) if h not in store))
+
+        if uncached:
+            print(f"  {cache_name}: encoding {len(uncached)} new texts "
+                  f"({len(texts) - len(uncached)} already in text store)")
+            new_vecs = model.encode(uncached, batch_size=64, show_progress_bar=True)
+            for text, vec in zip(uncached, new_vecs):
+                store[stable_task_hash(text)] = vec.astype(np.float32)
+            _save_text_store(cfg)
+        else:
+            print(f"  {cache_name}: all {len(texts)} texts found in text store")
+
+        emb = np.array([store[h] for h in hashes], dtype=np.float32)
         if normalize_output:
             emb = normalize(emb)
+
         tmp = path.with_suffix(path.suffix + ".tmp")
         with tmp.open("wb") as f:
             pickle.dump(emb, f, protocol=pickle.HIGHEST_PROTOCOL)
         tmp.replace(path)
-        print(f"Saved checkpoint: {path}")
+        print(f"  {cache_name}: version checkpoint saved → {path.name}")
+
     print(f"{cache_name} shape: {emb.shape}")
     _EMBEDDING_MEM_CACHE[cache_key] = emb
     gc.collect()
@@ -924,8 +1019,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "config",
         nargs="?",
-        default=str(Path(__file__).resolve().with_name("config_onet29.yaml")),
-        help="Path to a YAML or JSON run config. Defaults to config_onet29.yaml.",
+        default=str(Path(__file__).resolve().with_name("config_onet292.yaml")),
+        help="Path to a YAML or JSON run config. Defaults to config_onet292.yaml.",
     )
     args = parser.parse_args(argv)
     result = run_pipeline(Path(args.config))

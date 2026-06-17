@@ -27,10 +27,9 @@ GT_RESULTS_DIR = PROJECT_DIR / "validation" / "results"
 GT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Pipeline output paths ─────────────────────────────────────────────────────
-# Two crosswalk variants derived from different O*NET releases.
-# NEVER mix task IDs across releases: O*NET ≤25.0 uses SOC10, ≥25.1 uses SOC18.
-PIPELINE_ONET29 = PROJECT_DIR / "output" / "ONET29_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18
-PIPELINE_ONET25 = PROJECT_DIR / "output" / "ONET25_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10
+# NEVER mix task IDs across SOC generations: O*NET ≤25.0 uses SOC 2010, ≥25.1 uses SOC 2018.
+PIPELINE_ONET29 = PROJECT_DIR / "output" / "ONET292_task_to_ISCO_crosswalk.csv"  # 29.2 / SOC18
+PIPELINE_ONET25 = PROJECT_DIR / "output" / "ONET250_task_to_ISCO_crosswalk.csv"  # 25.0 / SOC10
 
 # ── O*NET task statement paths ────────────────────────────────────────────────
 ONET_TASKS_29   = DATA_DIR / "onet" / "29_2" / "Task Statements.xlsx"
@@ -203,18 +202,34 @@ def load_soc10_crosswalks() -> dict[str, pd.DataFrame]:
 # ── Load O*NET task statements ────────────────────────────────────────────────
 # Returns DataFrame with columns: task_id (int), soc_code (str 7-char),
 #   task_text (str), soc_title (str).
-# onet_version: "29" or "25".
+# version: full version string like "29.2", "25.1", "25.0", "20.0", "15.1".
+#          Legacy shorthands "29" (→ 29.2) and "25" (→ 25.0) are also accepted.
+# File format: Excel for v20.1+, tab-delimited txt for earlier releases.
 
-def load_onet_tasks(onet_version: str = "29") -> pd.DataFrame:
-    path = ONET_TASKS_29 if onet_version == "29" else ONET_TASKS_25
+_LEGACY_VERSION = {"29": "29.2", "25": "25.0"}
+
+
+def load_onet_tasks(version: str = "29.2") -> pd.DataFrame:
+    version = _LEGACY_VERSION.get(version, version)
+    folder = version.replace(".", "_")
+    major, minor = (int(x) for x in version.split("."))
+    use_excel = (major, minor) >= (20, 1)
+    ext = "xlsx" if use_excel else "txt"
+    path = DATA_DIR / "onet" / folder / f"Task Statements.{ext}"
     if not path.exists():
         raise FileNotFoundError(f"O*NET task statements not found: {path}")
-    raw = clean_names(pd.read_excel(path))
+    if use_excel:
+        raw = clean_names(pd.read_excel(path))
+    else:
+        try:
+            raw = clean_names(pd.read_csv(path, sep="\t", encoding="utf-8"))
+        except UnicodeDecodeError:
+            raw = clean_names(pd.read_csv(path, sep="\t", encoding="latin-1"))
     return (
         raw.assign(
             task_id=raw["task_id"].astype(int),
-            onet_soc_code=raw["o_net_soc_code"].astype(str).str.strip(),  # full code e.g. "11-9199.01"
-            soc_code=soc_to_7(raw["o_net_soc_code"]),                     # 6-digit e.g. "11-9199"
+            onet_soc_code=raw["o_net_soc_code"].astype(str).str.strip(),
+            soc_code=soc_to_7(raw["o_net_soc_code"]),
             task_text=raw["task"],
             soc_title=raw["title"],
         )
@@ -222,6 +237,12 @@ def load_onet_tasks(onet_version: str = "29") -> pd.DataFrame:
         .drop_duplicates()
         .reset_index(drop=True)
     )
+
+
+def pipeline_path_for_version(version: str) -> Path:
+    """Return the pipeline output path for a version string like "29.2"."""
+    tag = "ONET" + version.replace(".", "")
+    return PROJECT_DIR / "output" / f"{tag}_task_to_ISCO_crosswalk.csv"
 
 
 
