@@ -31,7 +31,7 @@ from config import (
 )
 from metrics_unsup import compute_unsup_metrics
 
-STAGES = ("S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE", "S4_OVERLOAD", "S5_FINAL")
+STAGES = ("S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE")
 
 # In-process memory cache for Tier-1 embedding arrays.
 # Key: str(raw_checkpoint_path). All sweep variants share the same raw embeddings,
@@ -804,58 +804,6 @@ def apply_coverage_backfill(
     return _dedupe_targets(combined)
 
 
-def apply_overload_control(
-    df_s3: pd.DataFrame,
-    cfg: RunConfig,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
-    if df_s3.empty or not cfg.enable_overload_control:
-        return _dedupe_targets(df_s3), {
-            "overload_threshold": None,
-            "overloaded_targets": [],
-            "pruned_links_count": 0,
-            "pruned_tasks_affected_share": 0.0,
-        }
-    counts = df_s3.groupby("target_id")["task_id"].nunique()
-    threshold = compute_overload_threshold(counts, cfg)
-    overloaded = set(counts[counts > threshold].index.astype(str))
-    if not overloaded:
-        return _dedupe_targets(df_s3), {
-            "overload_threshold": threshold,
-            "overloaded_targets": [],
-            "pruned_links_count": 0,
-            "pruned_tasks_affected_share": 0.0,
-        }
-    mask_overloaded = df_s3["target_id"].astype(str).isin(overloaded)
-    mask_non_best = ~df_s3["is_best"].astype(bool)
-    mask_low_quality = (
-        (df_s3["similarity"] < cfg.overload_min_sim) |
-        (df_s3["similarity"] < (df_s3["task_best_similarity"] - cfg.overload_margin_best))
-    )
-    prune_mask = mask_overloaded & mask_non_best & mask_low_quality
-    pruned = df_s3[~prune_mask].copy()
-    pruned.loc[mask_overloaded & ~prune_mask, "kept_reason"] = np.where(
-        pruned.loc[mask_overloaded & ~prune_mask, "is_best"].astype(bool),
-        pruned.loc[mask_overloaded & ~prune_mask, "kept_reason"],
-        "overload_retained",
-    )
-    pruned = _dedupe_targets(pruned)
-    affected_tasks = set(df_s3.loc[prune_mask, "task_id"].astype(str))
-    info = {
-        "overload_threshold": threshold,
-        "overloaded_targets": sorted(overloaded),
-        "pruned_links_count": int(prune_mask.sum()),
-        "pruned_tasks_affected_share": float(len(affected_tasks) / df_s3["task_id"].nunique()),
-    }
-    return pruned, info
-
-
-def finalize(
-    df_s4: pd.DataFrame,
-    universe_isco: set[str],
-    df_s1: pd.DataFrame,
-    cfg: RunConfig,
-) -> pd.DataFrame:
-    return apply_coverage_backfill(df_s4, universe_isco, df_s1, cfg, reason="final_coverage_backfill")
 
 
 # ── Output helpers ────────────────────────────────────────────────────────────
@@ -920,15 +868,11 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
     s1 = faiss_retrieve(task_emb, isco_group_emb, df_tasks, df_isco_groups, cfg.k_retrieve, cfg)
     s2 = apply_task_filter(s1, cfg)
     s3 = apply_coverage_backfill(s2, universe_isco, s1, cfg, reason="coverage_backfill")
-    s4, overload_info = apply_overload_control(s3, cfg)
-    s5 = finalize(s4, universe_isco, s1, cfg)
 
     stage_tables = {
         "S1_RETRIEVE": s1,
         "S2_TASK_FILTER": s2,
         "S3_COVERAGE": s3,
-        "S4_OVERLOAD": s4,
-        "S5_FINAL": s5,
     }
     stage_paths: dict[str, str] = {}
     metrics_payload: dict[str, Any] = {}
@@ -948,8 +892,6 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
         else:
             metrics["delta_links_vs_prev"] = 0
             metrics["delta_tasks_with_any_link_vs_prev"] = 0
-        if stage_name == "S4_OVERLOAD":
-            metrics.update(overload_info)
         metrics["run_id"] = run_id
         metrics["stage"] = stage_name
         metrics_payload[stage_name] = metrics
@@ -985,7 +927,7 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
     if not cfg.slim_output:
         run_dir = _stage_output_dir(cfg, run_id)
         save_config(cfg, run_dir / "config.json")
-        final_df = _standardize_stage(s5, "S5_FINAL", run_id)
+        final_df = _standardize_stage(s3, "S3_COVERAGE", run_id)
         drop = ["run_id", "stage", "task_text_hash", "task_key", "target_id", "gap_1_k", "topk_entropy", "kept_reason"]
         final_df = final_df.drop(columns=[c for c in drop if c in final_df.columns])
         ensure_dir(Path(cfg.final_output_path).parent)
@@ -998,7 +940,7 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
             compute_input_hashes(cfg),
             stage_paths,
             metrics_paths={"metrics_json": str(metrics_json_path), "metrics_csv": str(metrics_csv_path)},
-            extra={"code_version": code_version, "overload_info": overload_info},
+            extra={"code_version": code_version},
         )
 
     return {
@@ -1010,7 +952,7 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
         "config": cfg,
         "metrics_df": metrics_long_df,
         "s1": s1,
-        "s5": s5,
+        "s3": s3,
     }
 
 

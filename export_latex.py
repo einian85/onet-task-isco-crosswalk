@@ -15,6 +15,8 @@ GT_RESULTS_DIR = Path("validation/results")
 TABLES_DIR = Path("results/publication/tables")
 TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
+SHOW_VERSIONS = {15.1, 20.0, 25.0, 25.1, 29.2, 30.3}
+
 DATASET_LABELS = {
     "25.1-ID": "O*NET 25.1",
     "29.2-ID": "O*NET 29.2",
@@ -28,8 +30,6 @@ STAGE_LABELS = {
     "S1_RETRIEVE": "S1: Retrieve",
     "S2_TASK_FILTER": "S2: Task filter",
     "S3_COVERAGE": "S3: Coverage",
-    "S4_OVERLOAD": "S4: Overload",
-    "S5_FINAL": "S5: Final",
 }
 
 CROSSWALK_LABELS = {
@@ -59,26 +59,25 @@ def _write_raw_tex(content: str, out_path: Path) -> None:
     out_path.write_text(content, encoding="utf-8")
 
 
-def _baseline_s5(df: pd.DataFrame) -> pd.DataFrame:
+def _baseline_s3(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[df["dataset_short"].isin(SHOW_VERSIONS)].copy()
     out = df[
         [
             "dataset_short",
-            "S5_coverage",
-            "S5_mean_similarity",
-            "S5_mean_links_per_task",
-            "S5_overloaded_task_share",
-            "S5_gini_tasks_per_isco",
+            "S3_coverage",
+            "S3_mean_similarity",
+            "S3_mean_links_per_task",
+            "S3_gini_tasks_per_isco",
         ]
     ].copy()
     out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
-            "S5_coverage": "Cov.",
-            "S5_mean_similarity": "Sim.",
-            "S5_mean_links_per_task": "Links",
-            "S5_overloaded_task_share": "Ovld.",
-            "S5_gini_tasks_per_isco": "Gini",
+            "S3_coverage": "Cov.",
+            "S3_mean_similarity": "Sim.",
+            "S3_mean_links_per_task": "Links",
+            "S3_gini_tasks_per_isco": "Gini",
         }
     )
     for col in out.columns[1:]:
@@ -93,9 +92,9 @@ def _sweep_top(df: pd.DataFrame) -> pd.DataFrame:
             "changed_param",
             "changed_value",
             "selection_score",
-            "S5_FINAL_isco_coverage_share",
-            "S5_FINAL_mean_similarity_retained",
-            "S5_FINAL_share_tasks_in_overloaded_isco",
+            "S3_COVERAGE_isco_coverage_share",
+            "S3_COVERAGE_mean_similarity_retained",
+            "S3_COVERAGE_gini_tasks_per_isco",
         ]
     ].copy()
     out = out.rename(
@@ -104,15 +103,24 @@ def _sweep_top(df: pd.DataFrame) -> pd.DataFrame:
             "changed_param": "Changed parameter",
             "changed_value": "Value",
             "selection_score": "Selection score",
-            "S5_FINAL_isco_coverage_share": "S5 coverage",
-            "S5_FINAL_mean_similarity_retained": "S5 mean similarity",
-            "S5_FINAL_share_tasks_in_overloaded_isco": "S5 overloaded share",
+            "S3_COVERAGE_isco_coverage_share": "S3 coverage",
+            "S3_COVERAGE_mean_similarity_retained": "S3 mean similarity",
+            "S3_COVERAGE_gini_tasks_per_isco": "S3 Gini",
         }
     )
     out["Rank"] = pd.to_numeric(out["Rank"], errors="coerce").fillna(0).astype(int)
-    for col in ["Selection score", "S5 coverage", "S5 mean similarity", "S5 overloaded share"]:
+    for col in ["Selection score", "S3 coverage", "S3 mean similarity", "S3 Gini"]:
         out[col] = _fmt_float(out[col], 3)
     return out
+
+
+_PARAM_LABELS = {
+    "w_dwa":       r"$w_{\text{dwa}}$",
+    "w_soc_title": r"$w_{\text{soc}}$",
+    "w_occ":       r"$w_{\text{occ}}$",
+    "w_isco":      r"$w_{\text{isco}}$",
+    "w_isco_task": r"$w_{\text{isco,task}}$",
+}
 
 
 def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
@@ -121,22 +129,23 @@ def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
             "parameter",
             "recommended_value",
             "selection_score",
-            "S5_coverage",
-            "S5_mean_similarity",
-            "S5_overloaded_task_share",
+            "S3_coverage",
+            "S3_mean_similarity",
+            "S3_gini_tasks_per_isco",
         ]
     ].copy()
+    out["parameter"] = out["parameter"].map(lambda x: _PARAM_LABELS.get(x, x))
     out = out.rename(
         columns={
             "parameter": "Parameter",
             "recommended_value": "Recommended value",
             "selection_score": "Selection score",
-            "S5_coverage": "S5 coverage",
-            "S5_mean_similarity": "S5 mean similarity",
-            "S5_overloaded_task_share": "S5 overloaded share",
+            "S3_coverage": "S3 coverage",
+            "S3_mean_similarity": "S3 mean similarity",
+            "S3_gini_tasks_per_isco": "S3 Gini",
         }
     )
-    for col in ["Selection score", "S5 coverage", "S5 mean similarity", "S5 overloaded share"]:
+    for col in ["Selection score", "S3 coverage", "S3 mean similarity", "S3 Gini"]:
         out[col] = _fmt_float(out[col], 3)
     return out
 
@@ -227,9 +236,6 @@ def _overload_examples(df: pd.DataFrame) -> pd.DataFrame:
             "iscoGroup",
             "isco_title",
             "tasks_s3",
-            "tasks_s4",
-            "tasks_s5",
-            "pruned_in_s4",
         ]
     ].copy()
     out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
@@ -238,15 +244,11 @@ def _overload_examples(df: pd.DataFrame) -> pd.DataFrame:
             "dataset_short": "Dataset",
             "iscoGroup": "ISCO",
             "isco_title": "Occupation label",
-            "tasks_s3": "S3",
-            "tasks_s4": "S4",
-            "tasks_s5": "S5",
-            "pruned_in_s4": "Pruned",
+            "tasks_s3": "Tasks",
         }
     )
     out["Occupation label"] = out["Occupation label"].str.slice(0, 32)
-    for col in ["S3", "S4", "S5", "Pruned"]:
-        out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0).astype(int)
+    out["Tasks"] = pd.to_numeric(out["Tasks"], errors="coerce").fillna(0).astype(int)
     return out
 
 
@@ -342,9 +344,7 @@ def _stage_examples(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
-    # Show a representative sample spanning the full version range
-    _SHOW_VERSIONS = {"4.0", "15.1", "20.0", "25.0", "25.1", "29.2", "30.3"}
-    df = df[df["dataset_short"].isin(_SHOW_VERSIONS)].copy()
+    df = df[df["dataset_short"].isin(SHOW_VERSIONS)].copy()
     out = df[
         [
             "dataset_short",
@@ -352,7 +352,7 @@ def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
             "isco_coverage_share",
             "mean_similarity_retained",
             "mean_links_per_task",
-            "share_tasks_in_overloaded_isco",
+            "gini_tasks_per_isco",
         ]
     ].copy()
     out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
@@ -364,10 +364,10 @@ def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
             "isco_coverage_share": "Cov.",
             "mean_similarity_retained": "Sim.",
             "mean_links_per_task": "Links",
-            "share_tasks_in_overloaded_isco": "Ovld.",
+            "gini_tasks_per_isco": "Gini",
         }
     )
-    for col in ["Cov.", "Sim.", "Links", "Ovld."]:
+    for col in ["Cov.", "Sim.", "Links", "Gini"]:
         out[col] = _fmt_float(out[col], 3)
     return out
 
@@ -383,7 +383,7 @@ def _task_examples_tex() -> str | None:
 
     df_s5 = pd.read_csv(CROSSWALK_PATH)
     if "stage" in df_s5.columns:
-        df_s5 = df_s5[df_s5["stage"] == "S5_FINAL"].copy()
+        df_s5 = df_s5[df_s5["stage"] == "S3_COVERAGE"].copy()
 
     tasks = pd.read_excel(ONET_TASKS_PATH)
     dwa = pd.read_excel(ONET_DWA_PATH)
@@ -535,8 +535,8 @@ Scenario & Cov.\ & Exact & Sub- & Major \\
 
 # (src_csv, tex_name, transform, longtable, caption, label)
 TABLE_SPECS: list[tuple] = [
-    ("table_baseline_s5_summary.csv", "table_baseline_s5_summary.tex", _baseline_s5,
-     True, "Final-stage (S5) summary metrics across all O*NET releases (v4.0--v30.3).", "tab:s5-summary"),
+    ("table_baseline_s3_summary.csv", "table_baseline_s3_summary.tex", _baseline_s3,
+     True, "Final-stage (S3) summary metrics across all O*NET releases (v4.0--v30.3).", "tab:s3-summary"),
     ("table_sweep_top_configs.csv", "table_sweep_top_configs.tex", _sweep_top,
      False, None, None),
     ("table_sweep_parameter_recommendations.csv", "table_sweep_parameter_recommendations.tex", _sweep_param,
@@ -546,7 +546,7 @@ TABLE_SPECS: list[tuple] = [
     ("table_reference_internal_comparison.csv", "table_reference_internal_comparison.tex", _reference_internal,
      False, None, None),
     ("table_overload_examples.csv", "table_overload_examples.tex", _overload_examples,
-     True, r"ISCO-08 groups with the highest task counts at S3 (before overload control).", "tab:overload"),
+     True, r"ISCO-08 unit groups attracting the highest number of task assignments in the final output, shown for all O*NET releases.", "tab:overload"),
     ("table_stage_task_examples.csv", "table_stage_task_examples.tex", _stage_examples,
      False, None, None),
     ("table_baseline_stage_metrics.csv", "table_baseline_stage_metrics.tex", _baseline_stage,

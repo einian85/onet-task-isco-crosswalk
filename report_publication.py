@@ -6,7 +6,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from config import RunConfig, compute_run_id, get_code_version, load_yaml_or_json
+from config import RunConfig, compute_run_id, get_code_version, load_config, load_yaml_or_json
 
 
 def _save_fig(fig: plt.Figure, png_path: Path) -> None:
@@ -28,25 +28,19 @@ PLOT_STYLE = {
 }
 
 SWEEP_PARAMS = [
-    "min_sim",
-    "margin_best",
-    "max_links_per_task",
+    "w_dwa",
+    "w_soc_title",
     "w_occ",
-    "k_retrieve",
-    "overload_abs",
-    "overload_quantile",
-    "overload_min_sim",
-    "overload_margin_best",
+    "w_isco",
+    "w_isco_task",
 ]
 
-STAGE_ORDER = ["S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE", "S4_OVERLOAD", "S5_FINAL"]
+STAGE_ORDER = ["S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE"]
 
 STAGE_LABELS = {
     "S1_RETRIEVE": "S1: Retrieve",
     "S2_TASK_FILTER": "S2: Task filter",
     "S3_COVERAGE": "S3: Coverage",
-    "S4_OVERLOAD": "S4: Overload",
-    "S5_FINAL": "S5: Final",
 }
 
 _SOC_LONG = {
@@ -92,7 +86,7 @@ def ensure_dir(path: str | Path) -> Path:
 
 
 def load_cfg(path: str) -> RunConfig:
-    return RunConfig(**load_yaml_or_json(path))
+    return load_config(path)
 
 
 def _run_id_from_manifest(final_output_path: str) -> str:
@@ -140,7 +134,7 @@ def build_baseline_stage_table(run_ids: dict[str, dict[str, str]]) -> pd.DataFra
     return df.sort_values(["dataset_id", "stage"]).reset_index(drop=True)
 
 
-def build_s5_summary(stage_df: pd.DataFrame) -> pd.DataFrame:
+def build_s3_summary(stage_df: pd.DataFrame) -> pd.DataFrame:
     keep = [
         "dataset_id",
         "dataset",
@@ -149,28 +143,26 @@ def build_s5_summary(stage_df: pd.DataFrame) -> pd.DataFrame:
         "isco_coverage_share",
         "mean_similarity_retained",
         "mean_links_per_task",
-        "share_tasks_in_overloaded_isco",
         "gini_tasks_per_isco",
         "tasks_per_isco_mean",
         "tasks_per_isco_p95",
         "tasks_per_isco_max",
         "retrieval_lowconf_share",
     ]
-    s5 = stage_df.loc[stage_df["stage"] == "S5_FINAL", keep].copy()
-    s5 = s5.rename(
+    s3 = stage_df.loc[stage_df["stage"] == "S3_COVERAGE", keep].copy()
+    s3 = s3.rename(
         columns={
-            "isco_coverage_share": "S5_coverage",
-            "mean_similarity_retained": "S5_mean_similarity",
-            "mean_links_per_task": "S5_mean_links_per_task",
-            "share_tasks_in_overloaded_isco": "S5_overloaded_task_share",
-            "gini_tasks_per_isco": "S5_gini_tasks_per_isco",
-            "tasks_per_isco_mean": "S5_tasks_per_isco_mean",
-            "tasks_per_isco_p95": "S5_tasks_per_isco_p95",
-            "tasks_per_isco_max": "S5_tasks_per_isco_max",
-            "retrieval_lowconf_share": "S5_lowconf_share",
+            "isco_coverage_share": "S3_coverage",
+            "mean_similarity_retained": "S3_mean_similarity",
+            "mean_links_per_task": "S3_mean_links_per_task",
+            "gini_tasks_per_isco": "S3_gini_tasks_per_isco",
+            "tasks_per_isco_mean": "S3_tasks_per_isco_mean",
+            "tasks_per_isco_p95": "S3_tasks_per_isco_p95",
+            "tasks_per_isco_max": "S3_tasks_per_isco_max",
+            "retrieval_lowconf_share": "S3_lowconf_share",
         }
     )
-    return s5.sort_values("dataset_id").reset_index(drop=True)
+    return s3.sort_values("dataset_id").reset_index(drop=True)
 
 
 def identify_sweep_change(row: pd.Series, baseline: pd.Series) -> tuple[str, str]:
@@ -223,11 +215,10 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
         "pareto_candidate",
         "changed_param",
         "changed_value",
-        "S5_FINAL_isco_coverage_share",
-        "S5_FINAL_mean_similarity_retained",
-        "S5_FINAL_mean_links_per_task",
-        "S5_FINAL_share_tasks_in_overloaded_isco",
-        "S5_FINAL_gini_tasks_per_isco",
+        "S3_COVERAGE_isco_coverage_share",
+        "S3_COVERAGE_mean_similarity_retained",
+        "S3_COVERAGE_mean_links_per_task",
+        "S3_COVERAGE_gini_tasks_per_isco",
     ]
     top_table = df[top_cols].sort_values(["selection_rank", "run_id"]).head(12).reset_index(drop=True)
 
@@ -244,10 +235,10 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
                 "run_id": best["run_id"],
                 "selection_rank": best["selection_rank"],
                 "selection_score": best["selection_score"],
-                "S5_coverage": best["S5_FINAL_isco_coverage_share"],
-                "S5_mean_similarity": best["S5_FINAL_mean_similarity_retained"],
-                "S5_mean_links_per_task": best["S5_FINAL_mean_links_per_task"],
-                "S5_overloaded_task_share": best["S5_FINAL_share_tasks_in_overloaded_isco"],
+                "S3_coverage": best["S3_COVERAGE_isco_coverage_share"],
+                "S3_mean_similarity": best["S3_COVERAGE_mean_similarity_retained"],
+                "S3_mean_links_per_task": best["S3_COVERAGE_mean_links_per_task"],
+                "S3_gini_tasks_per_isco": best["S3_COVERAGE_gini_tasks_per_isco"],
             }
         )
     per_param_table = pd.DataFrame(per_param_rows).sort_values("parameter").reset_index(drop=True)
@@ -260,14 +251,14 @@ def save_table(df: pd.DataFrame, out_dir: Path, name: str) -> Path:
     return path
 
 
-def plot_baseline_s5(summary_df: pd.DataFrame, out_dir: Path) -> Path:
+def plot_baseline_s3(summary_df: pd.DataFrame, out_dir: Path) -> Path:
     plt.rcParams.update(PLOT_STYLE)
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     metrics = [
-        ("S5_coverage", "Coverage"),
-        ("S5_mean_similarity", "Mean similarity"),
-        ("S5_mean_links_per_task", "Mean links/task"),
-        ("S5_overloaded_task_share", "Overloaded task share"),
+        ("S3_coverage", "Coverage"),
+        ("S3_mean_similarity", "Mean similarity"),
+        ("S3_mean_links_per_task", "Mean links/task"),
+        ("S3_gini_tasks_per_isco", "Gini (task distribution)"),
     ]
     dataset_display = {"29.2-ID": "O*NET 29.2", "25.0-ID": "O*NET 25.0"}
     disp_datasets = summary_df["dataset_short"].map(dataset_display).fillna(summary_df["dataset_short"])
@@ -276,7 +267,7 @@ def plot_baseline_s5(summary_df: pd.DataFrame, out_dir: Path) -> Path:
         ax.set_title(title)
         ax.set_xlabel("")
     fig.tight_layout()
-    path = out_dir / "figure_baseline_s5_comparison.png"
+    path = out_dir / "figure_baseline_s3_comparison.png"
     _save_fig(fig, path)
     plt.close(fig)
     return path
@@ -289,7 +280,7 @@ def plot_stage_progression(stage_df: pd.DataFrame, out_dir: Path) -> Path:
         ("isco_coverage_share", "Coverage"),
         ("mean_similarity_retained", "Mean similarity"),
         ("mean_links_per_task", "Mean links/task"),
-        ("share_tasks_in_overloaded_isco", "Overloaded task share"),
+        ("gini_tasks_per_isco", "Gini (task distribution)"),
     ]
     # Background: all versions in light gray
     for dataset, group in stage_df.groupby("dataset_short"):
@@ -334,9 +325,9 @@ def plot_sweep_tradeoff(out_dir: Path) -> Path | None:
     plt.rcParams.update(PLOT_STYLE)
     fig, ax = plt.subplots(figsize=(10, 7))
     scatter = ax.scatter(
-        df["S5_FINAL_isco_coverage_share"],
-        df["S5_FINAL_mean_similarity_retained"],
-        s=60 + 220 * (1 - df["S5_FINAL_share_tasks_in_overloaded_isco"]),
+        df["S3_COVERAGE_isco_coverage_share"],
+        df["S3_COVERAGE_mean_similarity_retained"],
+        s=60 + 220 * (1 - df["S3_COVERAGE_gini_tasks_per_isco"]),
         c=df["selection_score"],
         cmap="viridis",
         alpha=0.85,
@@ -345,16 +336,16 @@ def plot_sweep_tradeoff(out_dir: Path) -> Path | None:
     )
     pareto = df[df["pareto_candidate"] == True]
     ax.scatter(
-        pareto["S5_FINAL_isco_coverage_share"],
-        pareto["S5_FINAL_mean_similarity_retained"],
+        pareto["S3_COVERAGE_isco_coverage_share"],
+        pareto["S3_COVERAGE_mean_similarity_retained"],
         s=120,
         facecolors="none",
         edgecolors="#d1495b",
         linewidths=1.5,
         label="Pareto candidate",
     )
-    ax.set_xlabel("S5 coverage")
-    ax.set_ylabel("S5 mean similarity")
+    ax.set_xlabel("S3 coverage")
+    ax.set_ylabel("S3 mean similarity")
     ax.set_title("Sweep trade-off: coverage vs similarity")
     ax.legend(frameon=False)
     fig.colorbar(scatter, ax=ax, label="Selection score")
@@ -400,18 +391,18 @@ def main() -> None:
     out_dir = ensure_dir(Path("results") / "publication")
     run_ids = latest_run_ids()
     stage_df = build_baseline_stage_table(run_ids)
-    s5_df = build_s5_summary(stage_df)
+    s3_df = build_s3_summary(stage_df)
     top_sweep, per_param = build_sweep_tables()
 
     saved = []
     saved.append(save_table(stage_df, out_dir, "table_baseline_stage_metrics"))
-    saved.append(save_table(s5_df, out_dir, "table_baseline_s5_summary"))
+    saved.append(save_table(s3_df, out_dir, "table_baseline_s3_summary"))
     if top_sweep is not None:
         saved.append(save_table(top_sweep, out_dir, "table_sweep_top_configs"))
     if per_param is not None and not per_param.empty:
         saved.append(save_table(per_param, out_dir, "table_sweep_parameter_recommendations"))
 
-    saved.append(plot_baseline_s5(s5_df, out_dir))
+    saved.append(plot_baseline_s3(s3_df, out_dir))
     saved.append(plot_stage_progression(stage_df, out_dir))
     tradeoff = plot_sweep_tradeoff(out_dir)
     if tradeoff is not None:

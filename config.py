@@ -72,11 +72,6 @@ class RunConfig:
     max_links_per_task: int = 3
     enforce_isco_coverage: bool = True
     coverage_backfill_strategy: str = "best_task_for_missing_isco"
-    enable_overload_control: bool = True
-    overload_abs: int = 200
-    overload_quantile: float = 0.95
-    overload_min_sim: float = 0.55
-    overload_margin_best: float = 0.02
     softmax_temperature: float = 0.05
     lowconf_gap_threshold: float = 0.01
     lowconf_entropy_threshold: float = 1.2
@@ -127,7 +122,9 @@ def load_config(path: str | Path) -> RunConfig:
     raw = load_yaml_or_json(path)
     unknown = set(raw) - KNOWN_FIELDS
     if unknown:
-        raise ValueError(f"Unknown config keys: {sorted(unknown)}")
+        import warnings
+        warnings.warn(f"Ignoring unknown config keys (removed parameters?): {sorted(unknown)}")
+        raw = {k: v for k, v in raw.items() if k in KNOWN_FIELDS}
     cfg = RunConfig(**raw)
     validate_config(cfg)
     return cfg
@@ -160,12 +157,6 @@ def validate_config(cfg: RunConfig) -> None:
         raise ValueError("min_sim must be in [0,1]")
     if not 0 <= cfg.margin_best <= 1:
         raise ValueError("margin_best must be in [0,1]")
-    if not 0 <= cfg.overload_min_sim <= 1:
-        raise ValueError("overload_min_sim must be in [0,1]")
-    if not 0 <= cfg.overload_margin_best <= 1:
-        raise ValueError("overload_margin_best must be in [0,1]")
-    if not 0 < cfg.overload_quantile < 1:
-        raise ValueError("overload_quantile must be in (0,1)")
     if cfg.max_links_per_task < 1:
         raise ValueError("max_links_per_task must be >= 1")
     if not 0 <= cfg.w_soc_title <= 1:
@@ -205,9 +196,6 @@ def compute_run_id(cfg: RunConfig, code_version: str, data_version: str) -> str:
     return stable_hash({"config": cfg.to_hash_dict(), "code_version": code_version, "data_version": data_version})[:16]
 
 
-def compute_overload_threshold(counts, cfg: RunConfig) -> float:
-    """Shared helper so pipeline and metrics use identical overload threshold logic."""
-    return max(float(cfg.overload_abs), float(counts.quantile(cfg.overload_quantile)))
 
 
 
