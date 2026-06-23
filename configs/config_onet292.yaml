@@ -13,7 +13,6 @@ esco_occupations_path: data/esco/occupations_en.csv
 data_version: managed-occupation-standards
 onet_release: db_29_2_excel
 esco_release: ESCO_en
-isco_level: 4
 random_seed: 42
 # ── O*NET/SOC query-side embedding blend ──────────────────────────────────────
 # w_soc_title > 0: blend separate SOC-title embedding into the query vector.
@@ -34,17 +33,11 @@ w_occ: 0.60                 # occ share within ESCO component; skill = 1 - w_occ
 embedding_cache_dir: checkpoints
 faiss_index_type: FlatIP
 k_retrieve: 5
-keep_best_per_task: true
 min_sim: 0.45
 margin_best: 0.03
 max_links_per_task: 1
-enforce_isco_coverage: true
-coverage_backfill_strategy: best_task_for_missing_isco
-enable_overload_control: true
 overload_abs: 200
 overload_quantile: 0.95
-overload_min_sim: 0.55
-overload_margin_best: 0.02
 softmax_temperature: 0.05
 lowconf_gap_threshold: 0.01
 lowconf_entropy_threshold: 1.2

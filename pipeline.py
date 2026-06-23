@@ -30,7 +30,7 @@ from config import (
 )
 from metrics_unsup import compute_unsup_metrics
 
-STAGES = ("S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE")
+STAGES = ("S1_RETRIEVE", "S2_TASK_FILTER")
 
 # In-process memory cache for Tier-1 embedding arrays.
 # Key: str(raw_checkpoint_path). All sweep variants share the same raw embeddings,
@@ -776,34 +776,6 @@ def apply_task_filter(df_s1: pd.DataFrame, cfg: RunConfig) -> pd.DataFrame:
     return kept
 
 
-def apply_coverage_backfill(
-    df_stage: pd.DataFrame,
-    universe_isco: set[str],
-    df_s1: pd.DataFrame,
-    cfg: RunConfig,
-    reason: str = "coverage_backfill",
-) -> pd.DataFrame:
-    covered = set(df_stage["target_id"].astype(str).unique())
-    missing = sorted(universe_isco - covered)
-    if not missing or not cfg.enforce_isco_coverage:
-        return _dedupe_targets(df_stage)
-    assigned_tasks = set(df_stage["task_id"].astype(str).unique())
-    add_rows = (
-        df_s1[
-            df_s1["target_id"].astype(str).isin(missing) &
-            ~df_s1["task_id"].astype(str).isin(assigned_tasks)
-        ]
-        .sort_values(["target_id", "similarity", "task_id"], ascending=[True, False, True])
-        .groupby("target_id", group_keys=False)
-        .head(1)
-        .copy()
-    )
-    add_rows["kept_reason"] = reason
-    combined = pd.concat([df_stage, add_rows], ignore_index=True)
-    return _dedupe_targets(combined)
-
-
-
 
 # ── Output helpers ────────────────────────────────────────────────────────────
 
@@ -866,12 +838,10 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
     )
     s1 = faiss_retrieve(task_emb, isco_group_emb, df_tasks, df_isco_groups, cfg.k_retrieve, cfg)
     s2 = apply_task_filter(s1, cfg)
-    s3 = apply_coverage_backfill(s2, universe_isco, s1, cfg, reason="coverage_backfill")
 
     stage_tables = {
         "S1_RETRIEVE": s1,
         "S2_TASK_FILTER": s2,
-        "S3_COVERAGE": s3,
     }
     stage_paths: dict[str, str] = {}
     metrics_payload: dict[str, Any] = {}
@@ -926,7 +896,7 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
     if not cfg.slim_output:
         run_dir = _stage_output_dir(cfg, run_id)
         save_config(cfg, run_dir / "config.json")
-        final_df = _standardize_stage(s3, "S3_COVERAGE", run_id)
+        final_df = _standardize_stage(s2, "S2_TASK_FILTER", run_id)
         drop = ["run_id", "stage", "task_text_hash", "task_key", "target_id", "gap_1_k", "topk_entropy", "kept_reason"]
         final_df = final_df.drop(columns=[c for c in drop if c in final_df.columns])
         ensure_dir(Path(cfg.final_output_path).parent)
@@ -951,7 +921,7 @@ def run_pipeline(cfg: RunConfig | str | Path) -> dict[str, Any]:
         "config": cfg,
         "metrics_df": metrics_long_df,
         "s1": s1,
-        "s3": s3,
+        "s2": s2,
     }
 
 

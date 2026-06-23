@@ -37,7 +37,6 @@ class RunConfig:
     data_version: str
     onet_release: str
     esco_release: str
-    isco_level: int
     random_seed: int
     include_soc_title: bool = False
     # ── Query-side blend weights (independent dials — no sum constraint) ─────────
@@ -66,12 +65,9 @@ class RunConfig:
     embedding_cache_dir: str = "checkpoints"
     faiss_index_type: str = "FlatIP"
     k_retrieve: int = 5
-    keep_best_per_task: bool = True
     min_sim: float = 0.45
     margin_best: float = 0.03
     max_links_per_task: int = 3
-    enforce_isco_coverage: bool = True
-    coverage_backfill_strategy: str = "best_task_for_missing_isco"
     overload_abs: int = 200
     overload_quantile: float = 0.95
     softmax_temperature: float = 0.05
@@ -169,8 +165,6 @@ def validate_config(cfg: RunConfig) -> None:
         raise ValueError("w_dwa must be in [0, 1]")
     if cfg.faiss_index_type != "FlatIP":
         raise ValueError("Only FlatIP is currently implemented")
-    if cfg.coverage_backfill_strategy != "best_task_for_missing_isco":
-        raise ValueError("Only best_task_for_missing_isco is currently implemented")
     if cfg.softmax_temperature <= 0:
         raise ValueError("softmax_temperature must be > 0")
     if cfg.limit_tasks is not None and cfg.limit_tasks < 1:
@@ -254,53 +248,3 @@ def save_manifest(
 
 
 
-def dataset_preset(name: str) -> RunConfig:
-    common = dict(
-        output_dir="results",
-        include_soc_title=True,
-        esco_skills_path="data/esco/skills_en.csv",
-        esco_occupation_rel_path="data/esco/occupationSkillRelations_en.csv",
-        esco_occupations_path="data/esco/occupations_en.csv",
-        esco_release="ESCO_en",
-        isco_level=4,
-        random_seed=42,
-        data_version="managed-occupation-standards",
-    )
-    presets = {
-        "ONET29": RunConfig(
-            dataset_name="ONET29",
-            checkpoint_prefix="ONET29",
-            use_task_ids=True,
-            final_output_path="output/ONET29_task_to_ISCO_crosswalk.csv",
-            onet_tasks_path="data/onet/29_2/Task Statements.xlsx",
-            onet_tasks_dwa_path="data/onet/29_2/Tasks to DWAs.xlsx",
-            onet_tasks_cat_path="data/onet/29_2/Task Categories.xlsx",
-            onet_release="db_29_2_excel",
-            **common,
-        ),
-        "ONET25": RunConfig(
-            dataset_name="ONET25",
-            checkpoint_prefix="ONET25",
-            use_task_ids=True,
-            final_output_path="output/ONET25_task_to_ISCO_crosswalk.csv",
-            onet_tasks_path="data/onet/25_0/Task Statements.xlsx",
-            onet_tasks_dwa_path="data/onet/25_0/Tasks to DWAs.xlsx",
-            onet_tasks_cat_path="data/onet/25_0/Task Categories.xlsx",
-            onet_release="db_25_0_excel",
-            **common,
-        ),
-        "ONET25txt": RunConfig(
-            dataset_name="ONET25txt",
-            checkpoint_prefix="ONET25txt",
-            use_task_ids=False,
-            final_output_path="output/ONET25txt_task_to_ISCO_crosswalk.csv",
-            onet_tasks_path="data/onet/25_0/Task Statements.xlsx",
-            onet_tasks_dwa_path="data/onet/25_0/Tasks to DWAs.xlsx",
-            onet_tasks_cat_path="data/onet/25_0/Task Categories.xlsx",
-            onet_release="db_25_0_excel",
-            **{**common, "include_soc_title": False},
-        ),
-    }
-    cfg = presets[name]
-    validate_config(cfg)
-    return cfg
