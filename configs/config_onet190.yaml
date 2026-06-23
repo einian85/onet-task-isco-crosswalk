@@ -17,15 +17,15 @@ esco_release: ESCO_en
 isco_level: 4
 random_seed: 42
 include_soc_title: true
-w_soc_title: 0.375
-w_dwa: 0.0
+w_soc_title: 0.675  
+w_dwa: 0.030      
 include_esco_skills: true
 isco_tasks_path: data/isco/ISCO-08 EN Structure and definitions.xlsx
 embedding_model: all-mpnet-base-v2
 normalize_embeddings: true
-w_isco: 0.375
-w_isco_task: 0.7344
-w_occ: 0.1562
+w_isco: 0.80      
+w_isco_task: 0.60  
+w_occ: 0.60       
 embedding_cache_dir: checkpoints
 faiss_index_type: FlatIP
 k_retrieve: 5

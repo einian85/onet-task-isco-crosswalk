@@ -72,6 +72,8 @@ class RunConfig:
     max_links_per_task: int = 3
     enforce_isco_coverage: bool = True
     coverage_backfill_strategy: str = "best_task_for_missing_isco"
+    overload_abs: int = 200
+    overload_quantile: float = 0.95
     softmax_temperature: float = 0.05
     lowconf_gap_threshold: float = 0.01
     lowconf_entropy_threshold: float = 1.2
@@ -197,6 +199,11 @@ def compute_run_id(cfg: RunConfig, code_version: str, data_version: str) -> str:
 
 
 
+
+
+def compute_overload_threshold(counts, cfg: RunConfig) -> float:
+    """Shared helper so pipeline and metrics use identical overload threshold logic."""
+    return max(float(cfg.overload_abs), float(counts.quantile(cfg.overload_quantile)))
 
 
 def file_signature(path: str | Path) -> dict[str, Any]:
