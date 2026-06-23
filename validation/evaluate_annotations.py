@@ -51,8 +51,13 @@ def discover_variants() -> list[tuple[str, Path, str]]:
 
     add_variant(
         "onet29_current",
+        PROJECT_DIR / "output" / "ONET292_task_to_ISCO_crosswalk.csv",
+        "Current ONET29.2 production config",
+    )
+    add_variant(
+        "onet29_current",
         PROJECT_DIR / "output" / "ONET29_task_to_ISCO_crosswalk.csv",
-        "Current ONET29 candidate config",
+        "Legacy ONET29 candidate config",
     )
     add_variant(
         "onet29_wt70",

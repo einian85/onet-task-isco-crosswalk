@@ -343,33 +343,52 @@ def _stage_examples(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _baseline_stage(df: pd.DataFrame) -> pd.DataFrame:
+def _baseline_stage_tex() -> str | None:
+    src_path = RESULTS_DIR / "table_baseline_stage_metrics.csv"
+    if not src_path.exists():
+        return None
+    df = pd.read_csv(src_path)
     df = df[df["dataset_short"].isin(SHOW_VERSIONS)].copy()
-    out = df[
-        [
-            "dataset_short",
-            "stage",
-            "isco_coverage_share",
-            "mean_similarity_retained",
-            "mean_links_per_task",
-            "gini_tasks_per_isco",
-        ]
-    ].copy()
-    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
-    out["stage"] = out["stage"].map(STAGE_LABELS).fillna(out["stage"])
-    out = out.rename(
-        columns={
-            "dataset_short": "Dataset",
-            "stage": "Stage",
-            "isco_coverage_share": "Cov.",
-            "mean_similarity_retained": "Sim.",
-            "mean_links_per_task": "Links",
-            "gini_tasks_per_isco": "Gini",
-        }
+    df = df[df["stage"].notna()].copy()
+    for col in ["isco_coverage_share", "mean_similarity_retained", "mean_links_per_task", "gini_tasks_per_isco"]:
+        df[col] = _fmt_float(df[col], 3)
+    rows_tex = []
+    prev_dataset = None
+    for _, row in df.iterrows():
+        if prev_dataset is not None and row["dataset_short"] != prev_dataset:
+            rows_tex.append(r"\midrule")
+        dataset_label = f"O*NET {row['dataset_short']:.1f}"
+        stage_label = STAGE_LABELS.get(row["stage"], row["stage"])
+        rows_tex.append(
+            f"{dataset_label} & {stage_label} & "
+            f"{row['isco_coverage_share']} & {row['mean_similarity_retained']} & "
+            f"{row['mean_links_per_task']} & {row['gini_tasks_per_isco']} \\\\"
+        )
+        prev_dataset = row["dataset_short"]
+    body = "\n".join(rows_tex)
+    return (
+        r"""\begin{longtable}{rlllll}
+\caption{Pipeline metrics by stage and dataset.} \label{tab:stage-metrics} \\
+\toprule
+Dataset & Stage & Cov. & Sim. & Links & Gini \\
+\midrule
+\endfirsthead
+\caption[]{Pipeline metrics by stage and dataset.} \\
+\toprule
+Dataset & Stage & Cov. & Sim. & Links & Gini \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{\emph{Continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+"""
+        + body
+        + "\n"
+        + r"""\end{longtable}
+"""
     )
-    for col in ["Cov.", "Sim.", "Links", "Gini"]:
-        out[col] = _fmt_float(out[col], 3)
-    return out
 
 
 # ── Task examples table (loaded directly from crosswalk + O*NET data) ─────────
@@ -549,8 +568,6 @@ TABLE_SPECS: list[tuple] = [
      True, r"ISCO-08 unit groups attracting the highest number of task assignments in the final output, shown for all O*NET releases.", "tab:overload"),
     ("table_stage_task_examples.csv", "table_stage_task_examples.tex", _stage_examples,
      False, None, None),
-    ("table_baseline_stage_metrics.csv", "table_baseline_stage_metrics.tex", _baseline_stage,
-     True, "Pipeline metrics by stage and dataset.", "tab:stage-metrics"),
 ]
 
 
@@ -573,6 +590,7 @@ def main() -> None:
         (_gt01_validation_tex, "table_gt01_validation.tex"),
         (_mismatch_tex, "table_mismatch_examples.tex"),
         (_task_examples_tex, "table_task_examples.tex"),
+        (_baseline_stage_tex, "table_baseline_stage_metrics.tex"),
     ]:
         content = generator()
         if content is None:

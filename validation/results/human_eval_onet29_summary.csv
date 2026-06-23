@@ -1,2 +1,2 @@
 label,description,n_judged,pct_exact,pct_sub_major,pct_major_group,mean_similarity
-onet29_current,Current ONET29 candidate config,108,36.1,57.4,72.2,0.739
+onet29_current,Current ONET29.2 production config,108,54.6,71.3,81.5,0.699

@@ -274,6 +274,7 @@ def plot_baseline_s3(summary_df: pd.DataFrame, out_dir: Path) -> Path:
 
 
 def plot_stage_progression(stage_df: pd.DataFrame, out_dir: Path) -> Path:
+    stage_df = stage_df[stage_df["stage"].notna()].copy()
     plt.rcParams.update(PLOT_STYLE)
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
     metrics = [

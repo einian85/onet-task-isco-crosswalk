@@ -179,17 +179,19 @@ def _candidate_output_path(label: str) -> Path:
 
 
 def build_candidate_configs() -> list[dict[str, object]]:
-    base_cfg = load_config(PROJECT_DIR / "config_onet292.yaml")
+    base_cfg = load_config(PROJECT_DIR / "configs" / "config_onet292.yaml")
     built: list[dict[str, object]] = []
+    from config import KNOWN_FIELDS
     for item in CANDIDATES:
         label = str(item["label"])
+        safe_overrides = {k: v for k, v in item["overrides"].items() if k in KNOWN_FIELDS}
         cfg = replace(
             base_cfg,
             dataset_name=label,
             checkpoint_prefix="ONET29",
             final_output_path=str(_candidate_output_path(label)),
             slim_output=False,
-            **dict(item["overrides"]),
+            **safe_overrides,
         )
         built.append({"label": label, "description": item["description"], "config": cfg})
     return built

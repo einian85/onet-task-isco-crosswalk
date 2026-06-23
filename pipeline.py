@@ -19,7 +19,6 @@ from sklearn.preprocessing import normalize
 from config import (
     RunConfig,
     compute_input_hashes,
-    compute_overload_threshold,
     compute_run_id,
     get_code_version,
     load_config,
