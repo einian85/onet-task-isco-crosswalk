@@ -1,6 +1,6 @@
 label,pred_major_group,n,pct_exact,pct_sub_major,pct_major_group
 A1 – ESCO-SOC18 alone,1,1076,76.2,88.2,94.0
-A1 – ESCO-SOC18 alone,2,6341,84.7,94.0,97.7
+A1 – ESCO-SOC18 alone,2,6342,84.7,94.0,97.7
 A1 – ESCO-SOC18 alone,3,3927,80.6,89.2,92.6
 A1 – ESCO-SOC18 alone,4,781,81.3,87.7,92.4
 A1 – ESCO-SOC18 alone,5,1612,80.3,83.5,87.3
@@ -9,7 +9,7 @@ A1 – ESCO-SOC18 alone,7,2789,82.2,90.0,97.4
 A1 – ESCO-SOC18 alone,8,1256,85.7,93.3,94.5
 A1 – ESCO-SOC18 alone,9,782,65.0,70.3,77.1
 A2 – SOC18-ESCO alone,1,1059,69.2,86.0,92.0
-A2 – SOC18-ESCO alone,2,6322,78.3,90.4,95.5
+A2 – SOC18-ESCO alone,2,6323,78.3,90.4,95.5
 A2 – SOC18-ESCO alone,3,3887,68.9,81.2,83.9
 A2 – SOC18-ESCO alone,4,761,83.0,86.5,94.3
 A2 – SOC18-ESCO alone,5,1588,68.8,71.9,75.1
@@ -18,7 +18,7 @@ A2 – SOC18-ESCO alone,7,2749,77.2,86.9,93.9
 A2 – SOC18-ESCO alone,8,1240,79.3,87.7,88.5
 A2 – SOC18-ESCO alone,9,748,55.1,58.7,66.3
 A3 – Strict intersection,1,1059,69.2,85.1,92.0
-A3 – Strict intersection,2,6322,78.1,89.9,95.2
+A3 – Strict intersection,2,6323,78.1,89.9,95.2
 A3 – Strict intersection,3,3886,68.9,81.3,84.0
 A3 – Strict intersection,4,761,83.0,86.5,94.3
 A3 – Strict intersection,5,1558,68.9,72.1,74.6
@@ -27,7 +27,7 @@ A3 – Strict intersection,7,2749,77.2,86.9,93.9
 A3 – Strict intersection,8,1240,79.3,87.7,88.5
 A3 – Strict intersection,9,748,55.1,58.7,66.3
 A4 – Lenient union,1,1076,76.2,89.1,94.0
-A4 – Lenient union,2,6341,84.9,94.5,97.9
+A4 – Lenient union,2,6342,84.9,94.5,97.9
 A4 – Lenient union,3,3927,80.6,89.2,92.6
 A4 – Lenient union,4,781,81.3,87.7,92.4
 A4 – Lenient union,5,1612,81.5,84.7,87.3

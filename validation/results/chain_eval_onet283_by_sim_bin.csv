@@ -1,0 +1,17 @@
+label,sim_bin,n,pct_exact,pct_sub_major,pct_major_group
+A1 – ESCO-SOC18 alone,"[0.45,0.50)",359,51.0,68.2,76.9
+A1 – ESCO-SOC18 alone,"[0.50,0.60)",1320,65.0,80.4,89.4
+A1 – ESCO-SOC18 alone,"[0.60,0.70)",5703,70.9,84.1,91.5
+A1 – ESCO-SOC18 alone,"[0.70,1.00]",11875,89.3,94.0,96.3
+A2 – SOC18-ESCO alone,"[0.45,0.50)",342,41.8,59.4,67.8
+A2 – SOC18-ESCO alone,"[0.50,0.60)",1301,51.4,69.2,78.6
+A2 – SOC18-ESCO alone,"[0.60,0.70)",5583,59.2,75.8,84.0
+A2 – SOC18-ESCO alone,"[0.70,1.00]",11813,83.9,90.4,92.9
+A3 – Strict intersection,"[0.45,0.50)",342,41.8,59.4,67.8
+A3 – Strict intersection,"[0.50,0.60)",1301,51.4,68.0,78.6
+A3 – Strict intersection,"[0.60,0.70)",5569,59.2,75.6,84.1
+A3 – Strict intersection,"[0.70,1.00]",11787,83.9,90.4,92.8
+A4 – Lenient union,"[0.45,0.50)",359,51.0,68.2,76.9
+A4 – Lenient union,"[0.50,0.60)",1320,65.0,81.5,89.4
+A4 – Lenient union,"[0.60,0.70)",5703,71.0,84.5,91.5
+A4 – Lenient union,"[0.70,1.00]",11875,89.5,94.2,96.4

@@ -1,0 +1,17 @@
+label,sim_bin,n,pct_exact,pct_sub_major,pct_major_group
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)","[0.45,0.50)",245,24.5,49.8,65.3
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)","[0.50,0.60)",922,36.4,61.8,69.2
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)","[0.60,0.70)",4072,43.1,63.8,76.2
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)","[0.70,1.00]",10275,74.1,83.2,87.7
+B2 – SOC10-ISCO-BLS alone,"[0.45,0.50)",394,22.6,47.5,57.4
+B2 – SOC10-ISCO-BLS alone,"[0.50,0.60)",1419,36.5,56.7,66.7
+B2 – SOC10-ISCO-BLS alone,"[0.60,0.70)",5809,41.9,60.6,72.2
+B2 – SOC10-ISCO-BLS alone,"[0.70,1.00]",11922,69.0,77.8,82.4
+B3 – Lenient union (MHV ∪ BLS),"[0.45,0.50)",394,25.1,51.0,62.7
+B3 – Lenient union (MHV ∪ BLS),"[0.50,0.60)",1419,38.8,62.7,71.8
+B3 – Lenient union (MHV ∪ BLS),"[0.60,0.70)",5809,46.9,67.5,77.9
+B3 – Lenient union (MHV ∪ BLS),"[0.70,1.00]",11944,75.4,83.9,87.2
+B4 – Strict intersection (MHV ∩ BLS),"[0.45,0.50)",183,27.3,56.3,61.7
+B4 – Strict intersection (MHV ∩ BLS),"[0.50,0.60)",782,38.9,57.8,62.4
+B4 – Strict intersection (MHV ∩ BLS),"[0.60,0.70)",3387,43.3,61.8,72.7
+B4 – Strict intersection (MHV ∩ BLS),"[0.70,1.00]",9382,72.9,80.9,85.3

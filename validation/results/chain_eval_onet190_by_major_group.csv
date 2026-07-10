@@ -1,0 +1,37 @@
+label,pred_major_group,n,pct_exact,pct_sub_major,pct_major_group
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",1,1003,54.9,72.4,74.0
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",2,4605,62.9,81.5,92.4
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",3,3296,57.4,73.8,79.0
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",4,617,69.5,72.1,84.9
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",5,1286,59.0,64.1,69.4
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",6,273,61.2,73.6,73.6
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",7,2546,72.7,81.8,87.7
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",8,1070,76.6,87.5,88.6
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",9,767,45.6,52.2,61.3
+B2 – SOC10-ISCO-BLS alone,1,1143,55.2,66.9,72.4
+B2 – SOC10-ISCO-BLS alone,2,6229,56.8,74.7,83.4
+B2 – SOC10-ISCO-BLS alone,3,4160,50.2,64.1,70.8
+B2 – SOC10-ISCO-BLS alone,4,770,68.7,72.9,83.1
+B2 – SOC10-ISCO-BLS alone,5,1634,59.9,64.3,70.4
+B2 – SOC10-ISCO-BLS alone,6,295,50.2,50.2,59.7
+B2 – SOC10-ISCO-BLS alone,7,3043,65.4,77.3,85.0
+B2 – SOC10-ISCO-BLS alone,8,1322,66.9,80.0,82.4
+B2 – SOC10-ISCO-BLS alone,9,875,49.3,52.5,59.1
+B3 – Lenient union (MHV ∪ BLS),1,1143,57.9,71.5,76.4
+B3 – Lenient union (MHV ∪ BLS),2,6251,64.2,83.1,90.2
+B3 – Lenient union (MHV ∪ BLS),3,4160,56.4,72.7,78.4
+B3 – Lenient union (MHV ∪ BLS),4,770,70.8,73.1,83.4
+B3 – Lenient union (MHV ∪ BLS),5,1634,62.2,67.0,72.6
+B3 – Lenient union (MHV ∪ BLS),6,295,61.4,68.8,68.8
+B3 – Lenient union (MHV ∪ BLS),7,3043,70.6,81.3,87.9
+B3 – Lenient union (MHV ∪ BLS),8,1322,71.3,84.0,86.5
+B3 – Lenient union (MHV ∪ BLS),9,875,52.1,55.7,60.8
+B4 – Strict intersection (MHV ∩ BLS),1,894,58.2,75.4,77.9
+B4 – Strict intersection (MHV ∩ BLS),2,4063,59.6,76.0,85.0
+B4 – Strict intersection (MHV ∩ BLS),3,2816,57.9,70.5,74.4
+B4 – Strict intersection (MHV ∩ BLS),4,588,70.2,73.0,86.2
+B4 – Strict intersection (MHV ∩ BLS),5,1097,65.7,71.1,74.6
+B4 – Strict intersection (MHV ∩ BLS),6,260,51.5,56.2,56.2
+B4 – Strict intersection (MHV ∩ BLS),7,2287,74.0,80.8,87.1
+B4 – Strict intersection (MHV ∩ BLS),8,1013,75.2,86.4,87.4
+B4 – Strict intersection (MHV ∩ BLS),9,672,48.4,55.4,65.3
