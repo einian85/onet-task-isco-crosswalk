@@ -217,11 +217,20 @@ def build_task_table(cfg: RunConfig) -> pd.DataFrame:
     else:
         df_tasks = (
             df_tasks.drop(columns=["Task ID"])
-            .drop_duplicates(subset=["Task"])
+            .drop_duplicates(subset=["O*NET-SOC Code", "Task"])
             .reset_index(drop=True)
         )
-        df_tasks["task_key"] = df_tasks["Task"].astype(str)
-        df_tasks["task_id"] = df_tasks["Task"].astype(str).map(stable_task_hash)
+        # task_key and task_id are unique per (SOC, text) — same text under a
+        # different occupation is a different task (different SOC-title blend).
+        soc_task = (
+            df_tasks["O*NET-SOC Code"].astype(str)
+            + "::"
+            + df_tasks["Task"].astype(str)
+        )
+        df_tasks["task_key"] = soc_task
+        df_tasks["task_id"] = soc_task.map(stable_task_hash)
+    # task_text_hash keys the embedding cache — texts shared across SOC codes
+    # still resolve to the same cached vector (SOC title is blended separately).
     df_tasks["task_text_hash"] = df_tasks["Task"].astype(str).map(stable_task_hash)
     return build_task_text(df_tasks, cfg)
 
@@ -247,10 +256,13 @@ def load_dwa_long(cfg: RunConfig, df_tasks: pd.DataFrame) -> pd.DataFrame:
         df = df_dwa_raw.copy()
         df["task_id"] = df["Task ID"].astype(str)
     else:
-        # task_id is a hash of Task text — bridge via Task ID → Task text → hash
-        df_task_ids = read_onet_file(cfg.onet_tasks_path)[["Task ID", "Task"]].drop_duplicates()
+        # task_id is a hash of (SOC, Task text) — bridge via Task ID → SOC + text → hash
+        df_task_ids = read_onet_file(cfg.onet_tasks_path)[
+            ["O*NET-SOC Code", "Task ID", "Task"]
+        ].drop_duplicates()
         df = df_dwa_raw.merge(df_task_ids, on="Task ID", how="left")
-        df["task_id"] = df["Task"].astype(str).map(stable_task_hash)
+        soc_task = df["O*NET-SOC Code"].astype(str) + "::" + df["Task"].astype(str)
+        df["task_id"] = soc_task.map(stable_task_hash)
     valid_ids = set(df_tasks["task_id"].astype(str))
     df = df[df["task_id"].isin(valid_ids)]
     return (

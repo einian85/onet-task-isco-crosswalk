@@ -90,16 +90,41 @@ def load_cfg(path: str) -> RunConfig:
 
 
 def _run_id_from_manifest(final_output_path: str) -> str:
-    """Find the run_id of the most recent pipeline run for a given final_output_path."""
+    """Find the run_id for final_output_path by matching manifest mtime to the output CSV mtime.
+    When multiple manifests match, the one written closest in time to the output CSV wins —
+    the pipeline writes both atomically in the same run.
+    """
     import json
     target = final_output_path.replace("\\", "/")
     preds_root = Path("results/predictions")
-    for manifest in sorted(preds_root.glob("*/run_manifest.json"), reverse=True):
-        d = json.loads(manifest.read_text(encoding="utf-8"))
+    output_csv = Path(final_output_path)
+
+    matching: list[tuple[Path, dict]] = []
+    for manifest in preds_root.glob("*/run_manifest.json"):
+        try:
+            d = json.loads(manifest.read_text(encoding="utf-8"))
+        except Exception:
+            continue
         cfg_path = d.get("config", {}).get("final_output_path", "").replace("\\", "/")
         if cfg_path == target or cfg_path.endswith(Path(target).name):
-            return d["run_id"]
-    raise FileNotFoundError(f"No manifest found for final_output_path={final_output_path}")
+            matching.append((manifest, d))
+
+    if not matching:
+        raise FileNotFoundError(f"No manifest found for final_output_path={final_output_path}")
+
+    if len(matching) == 1:
+        return matching[0][1]["run_id"]
+
+    # Pick the manifest whose mtime is closest to the output CSV's mtime.
+    # The pipeline writes the CSV and the manifest in the same run, so their
+    # mtimes are nearly identical; old sweep manifests will be far off.
+    csv_mtime = output_csv.stat().st_mtime if output_csv.exists() else None
+    if csv_mtime is not None:
+        best = min(matching, key=lambda x: abs(x[0].stat().st_mtime - csv_mtime))
+        return best[1]["run_id"]
+
+    # Fallback: newest manifest
+    return max(matching, key=lambda x: x[0].stat().st_mtime)[1]["run_id"]
 
 
 def latest_run_ids() -> dict[str, dict[str, str]]:
@@ -131,7 +156,8 @@ def build_baseline_stage_table(run_ids: dict[str, dict[str, str]]) -> pd.DataFra
         rows.append(metrics)
     df = pd.concat(rows, ignore_index=True)
     df["stage"] = pd.Categorical(df["stage"], categories=STAGE_ORDER, ordered=True)
-    return df.sort_values(["dataset_id", "stage"]).reset_index(drop=True)
+    df["_ver"] = pd.to_numeric(df["dataset_short"], errors="coerce")
+    return df.sort_values(["_ver", "stage"]).drop(columns=["_ver"]).reset_index(drop=True)
 
 
 def build_s3_summary(stage_df: pd.DataFrame) -> pd.DataFrame:
@@ -149,7 +175,14 @@ def build_s3_summary(stage_df: pd.DataFrame) -> pd.DataFrame:
         "tasks_per_isco_max",
         "retrieval_lowconf_share",
     ]
-    s3 = stage_df.loc[stage_df["stage"] == "S3_COVERAGE", keep].copy()
+    # Use the last available stage per dataset: S3 if present (old pipeline runs),
+    # S2 otherwise (current pipeline). S3 == S2 in value; this just avoids
+    # dropping versions whose runs were produced by the current pipeline.
+    last_stage_idx = (
+        stage_df.groupby("dataset_id")["stage"]
+        .transform(lambda s: s == s.max())
+    )
+    s3 = stage_df.loc[last_stage_idx, keep].copy()
     s3 = s3.rename(
         columns={
             "isco_coverage_share": "S3_coverage",
@@ -162,7 +195,9 @@ def build_s3_summary(stage_df: pd.DataFrame) -> pd.DataFrame:
             "retrieval_lowconf_share": "S3_lowconf_share",
         }
     )
-    return s3.sort_values("dataset_id").reset_index(drop=True)
+    s3["_ver"] = pd.to_numeric(s3["dataset_short"], errors="coerce")
+    s3 = s3.sort_values("_ver").drop(columns=["_ver"]).reset_index(drop=True)
+    return s3
 
 
 def identify_sweep_change(row: pd.Series, baseline: pd.Series) -> tuple[str, str]:
@@ -245,6 +280,38 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
     return top_table, per_param_table
 
 
+def build_version_coverage_table() -> pd.DataFrame:
+    """Per-version task count, ISCO coverage, and mean similarity for SOC 2010 and SOC 2018."""
+    vlist = pd.read_csv(
+        Path(__file__).parent / "data" / "version_list.csv", dtype={"version": str}
+    )
+    soc_filter = {"onet_soc_2010", "onet_soc_2019"}
+    vlist = vlist[vlist["soc_taxonomy"].isin(soc_filter)].copy()
+    vlist["_ver_tuple"] = vlist["version"].apply(
+        lambda v: tuple(int(x) for x in v.split("."))
+    )
+    vlist = vlist.sort_values("_ver_tuple").reset_index(drop=True)
+
+    rows = []
+    for _, r in vlist.iterrows():
+        ver = r["version"]
+        soc_label = _SOC_LONG.get(r["soc_taxonomy"], r["soc_taxonomy"])
+        tag = "ONET" + ver.replace(".", "")
+        path = Path(__file__).parent / f"output/{tag}_task_to_ISCO_crosswalk.csv"
+        if not path.exists():
+            continue
+        df = pd.read_csv(path)
+        best = df[df["is_best"] == True]
+        rows.append({
+            "version": ver,
+            "soc": soc_label,
+            "n_tasks": len(best),
+            "isco_groups_covered": best["iscoGroup"].astype(str).str.zfill(4).nunique(),
+            "mean_similarity": round(best["similarity"].mean(), 3) if "similarity" in best.columns else None,
+        })
+    return pd.DataFrame(rows)
+
+
 def save_table(df: pd.DataFrame, out_dir: Path, name: str) -> Path:
     path = out_dir / f"{name}.csv"
     df.to_csv(path, index=False)
@@ -253,19 +320,22 @@ def save_table(df: pd.DataFrame, out_dir: Path, name: str) -> Path:
 
 def plot_baseline_s3(summary_df: pd.DataFrame, out_dir: Path) -> Path:
     plt.rcParams.update(PLOT_STYLE)
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     metrics = [
         ("S3_coverage", "Coverage"),
         ("S3_mean_similarity", "Mean similarity"),
-        ("S3_mean_links_per_task", "Mean links/task"),
         ("S3_gini_tasks_per_isco", "Gini (task distribution)"),
     ]
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
     dataset_display = {"29.2-ID": "O*NET 29.2", "25.0-ID": "O*NET 25.0"}
     disp_datasets = summary_df["dataset_short"].map(dataset_display).fillna(summary_df["dataset_short"])
-    for ax, (col, title) in zip(axes.flatten(), metrics):
+    labels = disp_datasets.tolist()
+    sparse_labels = [lab if i % 3 == 0 else "" for i, lab in enumerate(labels)]
+    for ax, (col, title) in zip(axes, metrics):
         ax.bar(disp_datasets, summary_df[col], color=["#35618f", "#4f8f5b", "#c77b30"])
         ax.set_title(title)
         ax.set_xlabel("")
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(sparse_labels, rotation=90, fontsize=7)
     fig.tight_layout()
     path = out_dir / "figure_baseline_s3_comparison.png"
     _save_fig(fig, path)
@@ -395,9 +465,12 @@ def main() -> None:
     s3_df = build_s3_summary(stage_df)
     top_sweep, per_param = build_sweep_tables()
 
+    version_cov_df = build_version_coverage_table()
+
     saved = []
     saved.append(save_table(stage_df, out_dir, "table_baseline_stage_metrics"))
     saved.append(save_table(s3_df, out_dir, "table_baseline_s3_summary"))
+    saved.append(save_table(version_cov_df, out_dir, "table_version_coverage"))
     if top_sweep is not None:
         saved.append(save_table(top_sweep, out_dir, "table_sweep_top_configs"))
     if per_param is not None and not per_param.empty:

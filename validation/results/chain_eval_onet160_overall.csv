@@ -1,0 +1,5 @@
+label,n_tasks,n_in_crosswalk,pct_in_crosswalk,pct_exact,pct_sub_major,pct_major_group
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",19355,15358,79.3,62.9,76.4,83.2
+B2 – SOC10-ISCO-BLS alone,19355,19333,99.9,57.7,70.6,77.6
+B3 – Lenient union (MHV ∪ BLS),19355,19355,100.0,63.2,76.9,82.8
+B4 – Strict intersection (MHV ∩ BLS),19355,13610,70.3,63.0,74.6,80.5

@@ -14,9 +14,7 @@ SOC taxonomy generations:
     SOC 2010: O*NET ≤25.0   → crosswalks ESCO-ONET-MHV + SOC10-ISCO-BLS
     SOC 2018: O*NET ≥25.1   → crosswalks ESCO-SOC18 + SOC18-ESCO
 
-Selected releases evaluated (3 per SOC era):
-    SOC 2018: 25.1 (first SOC 2018 release), 29.2 (parameter selection), 30.3 (latest)
-    SOC 2010: 15.1 (first SOC 2010 release), 20.0 (mid-era), 25.0 (last SOC 2010)
+All SOC 2010 and SOC 2018 releases with existing pipeline output are evaluated.
 
 For each SOC 2018 release we run four crosswalk scenarios:
     A1  ESCO-SOC18 alone
@@ -63,20 +61,31 @@ from shared import (
     summarise_match,
 )
 
-# ── Selected releases ──────────────────────────────────────────────────────────
-SOC18_VERSIONS = ["25.1", "29.2", "30.3"]   # first, sweep, latest
-SOC10_VERSIONS = ["15.1", "20.0", "25.0"]   # first, mid, last
+# ── All SOC 2010 and SOC 2018 releases with existing pipeline output ───────────
 
-SOC18_VERSION_LABELS = {
-    "25.1": "SOC 2018 — O*NET 25.1 (first SOC 2018 release)",
-    "29.2": "SOC 2018 — O*NET 29.2 (release used for parameter selection)",
-    "30.3": "SOC 2018 — O*NET 30.3 (latest release)",
-}
-SOC10_VERSION_LABELS = {
-    "15.1": "SOC 2010 — O*NET 15.1 (first SOC 2010 release)",
-    "20.0": "SOC 2010 — O*NET 20.0 (mid-era)",
-    "25.0": "SOC 2010 — O*NET 25.0 (last SOC 2010 release)",
-}
+def _load_soc_versions() -> tuple[list[str], list[str]]:
+    import pandas as pd
+    vlist = pd.read_csv(
+        Path(__file__).resolve().parent.parent / "data" / "version_list.csv",
+        dtype={"version": str},
+    )
+    vlist = vlist.sort_values(
+        "version",
+        key=lambda s: s.map(lambda v: tuple(int(x) for x in v.split("."))),
+    )
+    soc18 = [
+        r["version"] for _, r in vlist.iterrows()
+        if r["soc_taxonomy"] == "onet_soc_2019"
+        and pipeline_path_for_version(r["version"]).exists()
+    ]
+    soc10 = [
+        r["version"] for _, r in vlist.iterrows()
+        if r["soc_taxonomy"] == "onet_soc_2010"
+        and pipeline_path_for_version(r["version"]).exists()
+    ]
+    return soc18, soc10
+
+SOC18_VERSIONS, SOC10_VERSIONS = _load_soc_versions()
 
 
 def ver_tag(ver: str) -> str:
@@ -150,7 +159,8 @@ print(f"  XW10.2 (SOC10-ISCO-BLS):      {len(xw10_2):,} rows")
 
 for ver in SOC18_VERSIONS:
     tag = ver_tag(ver)
-    print(f"\n══ SOC 2018: O*NET {ver} ({'first' if ver == '25.1' else 'sweep' if ver == '29.2' else 'latest'}) ══")
+    pos = "first" if ver == SOC18_VERSIONS[0] else "latest" if ver == SOC18_VERSIONS[-1] else ver
+    print(f"\n══ SOC 2018: O*NET {ver} ({pos}) ══")
 
     pipeline_df = load_pipeline(pipeline_path_for_version(ver))
     task_soc    = load_onet_tasks(ver)
@@ -194,7 +204,8 @@ for ver in SOC18_VERSIONS:
 
 for ver in SOC10_VERSIONS:
     tag = ver_tag(ver)
-    print(f"\n══ SOC 2010: O*NET {ver} ({'first' if ver == '15.1' else 'mid' if ver == '20.0' else 'last'}) ══")
+    pos = "first" if ver == SOC10_VERSIONS[0] else "latest" if ver == SOC10_VERSIONS[-1] else ver
+    print(f"\n══ SOC 2010: O*NET {ver} ({pos}) ══")
 
     pipeline_df = load_pipeline(pipeline_path_for_version(ver))
     task_soc    = load_onet_tasks(ver)

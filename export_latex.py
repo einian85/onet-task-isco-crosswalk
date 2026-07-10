@@ -5,7 +5,7 @@ from typing import Callable
 
 import pandas as pd
 
-CROSSWALK_PATH = Path("output/ONET29_task_to_ISCO_crosswalk.csv")
+CROSSWALK_PATH = Path("output/ONET292_task_to_ISCO_crosswalk.csv")
 ONET_TASKS_PATH = Path("data/onet/29_2/Task Statements.xlsx")
 ONET_DWA_PATH = Path("data/onet/29_2/Tasks to DWAs.xlsx")
 
@@ -16,6 +16,7 @@ TABLES_DIR = Path("results/publication/tables")
 TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
 SHOW_VERSIONS = {15.1, 20.0, 25.0, 25.1, 29.2, 30.3}
+OVERLOAD_VERSIONS = [20.0, 25.0, 29.2, 30.3]  # ordered list for table E3
 
 DATASET_LABELS = {
     "25.1-ID": "O*NET 25.1",
@@ -229,27 +230,50 @@ def _reference_internal(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _overload_examples(df: pd.DataFrame) -> pd.DataFrame:
-    out = df[
-        [
-            "dataset_short",
-            "iscoGroup",
-            "isco_title",
-            "tasks_s3",
-        ]
-    ].copy()
-    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
-    out = out.rename(
-        columns={
-            "dataset_short": "Dataset",
-            "iscoGroup": "ISCO",
-            "isco_title": "Occupation label",
-            "tasks_s3": "Tasks",
-        }
+def _overload_tex() -> str | None:
+    src = RESULTS_DIR / "table_overload_examples.csv"
+    if not src.exists():
+        return None
+    df = pd.read_csv(src)
+    df = df[df["dataset_short"].isin(OVERLOAD_VERSIONS)].copy()
+    df["_ver"] = pd.to_numeric(df["dataset_short"], errors="coerce")
+    df = df.sort_values("_ver")
+
+    rows_tex = []
+    prev_ver = None
+    for _, row in df.iterrows():
+        ver = row["_ver"]
+        if prev_ver is not None and ver != prev_ver:
+            rows_tex.append(r"\midrule[0.3pt]")
+        label = f"O*NET {ver:.1f}" if pd.notna(ver) else ""
+        title = str(row["isco_title"])[:32]
+        tasks = int(pd.to_numeric(row["tasks_s3"], errors="coerce"))
+        rows_tex.append(f"{label} & {int(row['iscoGroup'])} & {title} & {tasks} \\\\")
+        prev_ver = ver
+
+    cap = (r"ISCO-08 unit groups attracting the highest number of task assignments "
+           r"in the final output, for four representative releases.")
+    body = "\n".join(rows_tex)
+    return (
+        "\\begin{longtable}{lrlr}\n"
+        f"\\caption{{{cap}}} \\label{{tab:overload}}\\\\\n"
+        "\\toprule\n"
+        "Dataset & ISCO & Occupation label & Tasks \\\\\n"
+        "\\midrule\n"
+        "\\endfirsthead\n"
+        f"\\caption[]{{{cap}}} \\\\\n"
+        "\\toprule\n"
+        "Dataset & ISCO & Occupation label & Tasks \\\\\n"
+        "\\midrule\n"
+        "\\endhead\n"
+        "\\midrule\n"
+        "\\multicolumn{4}{r}{\\emph{Continued on next page}} \\\\\n"
+        "\\endfoot\n"
+        "\\bottomrule\n"
+        "\\endlastfoot\n"
+        + body + "\n"
+        "\\end{longtable}\n"
     )
-    out["Occupation label"] = out["Occupation label"].str.slice(0, 32)
-    out["Tasks"] = pd.to_numeric(out["Tasks"], errors="coerce").fillna(0).astype(int)
-    return out
 
 
 def _mismatch_tex() -> str | None:
@@ -284,63 +308,44 @@ def _mismatch_tex() -> str | None:
             continue
         data_rows = []
         for idx, r in sub.iterrows():
-            soc = f"{_esc(r['soc_code'])} {_esc(r['soc_title'])}"
-            imp = f"{int(r['isco_imp'])}~{_esc(r['implied_occupation_label'])}"
-            ref = f"{int(r['isco_ref'])}~{_esc(r['reference_isco_title'])}"
-            ref2_raw = r.get("isco_ref2")
+            soc_code  = _esc(r["soc_code"])
+            soc_title = _esc(r["soc_title"])
+            imp_code  = int(r["isco_imp"])
+            imp_label = _esc(r["implied_occupation_label"])
+            ref_code  = int(r["isco_ref"])
+            ref_label = _esc(r["reference_isco_title"])
+            ref2_raw   = r.get("isco_ref2")
             ref2_title = r.get("reference_isco_title2")
             if pd.notna(ref2_raw) and pd.notna(ref2_title):
-                ref2 = f"{int(float(ref2_raw))}~{_esc(ref2_title)}"
+                ref2_code  = int(float(ref2_raw))
+                ref2_label = _esc(ref2_title)
             else:
-                ref2 = r"—"
-            data_rows.append(f"    {soc} & {imp} & {ref} & {ref2} \\\\")
-        header = f"    \\multicolumn{{4}}{{l}}{{\\emph{{{ERA_LABELS[ver]}}}}} \\\\[2pt]"
+                ref2_code  = r"---"
+                ref2_label = ""
+            data_rows.append(
+                f"    {soc_code} & {soc_title} & {imp_code} & {imp_label} & "
+                f"{ref_code} & {ref_label} & {ref2_code} & {ref2_label} \\\\"
+            )
+        header = f"    \\multicolumn{{8}}{{l}}{{\\emph{{{ERA_LABELS[ver]}}}}} \\\\[2pt]"
         sections.append(header + "\n" + "\n".join(data_rows))
 
     body = "\n\\midrule\n".join(sections)
+    # Column widths sum to 22.3cm; with 8×2×tabcolsep ≈ 3.4cm → ~25.7cm = A4 landscape linewidth
     return (
-        r"\begin{small}" + "\n"
-        r"\begin{tabular}{p{3.5cm}p{4.5cm}p{4.5cm}p{4.0cm}}" + "\n"
+        r"{\footnotesize" + "\n"
+        r"\begin{tabular}{p{1.2cm}p{5.0cm}p{0.8cm}p{4.6cm}p{0.8cm}p{4.6cm}p{0.8cm}p{4.6cm}}" + "\n"
         r"\toprule" + "\n"
-        r"SOC occupation & Pipeline ISCO & Ref.~1 ISCO & Ref.~2 ISCO \\" + "\n"
+        r"\multicolumn{2}{c}{SOC Occupation} & \multicolumn{2}{c}{Pipeline ISCO} & "
+        r"\multicolumn{2}{c}{Ref.~1 ISCO} & \multicolumn{2}{c}{Ref.~2 ISCO} \\" + "\n"
+        r"\cmidrule(r){1-2}\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(l){7-8}" + "\n"
+        r"Code & Title & Code & Label & Code & Label & Code & Label \\" + "\n"
         r"\midrule" + "\n"
         + body + "\n"
         r"\bottomrule" + "\n"
         r"\end{tabular}" + "\n"
-        r"\end{small}" + "\n"
+        r"}" + "\n"
     )
 
-
-def _stage_examples(df: pd.DataFrame) -> pd.DataFrame:
-    out = df[
-        [
-            "dataset_short",
-            "stage_name",
-            "task_id",
-            "candidate_rank",
-            "iscoGroup",
-            "isco_title",
-            "similarity",
-            "kept_reason",
-        ]
-    ].copy()
-    out["dataset_short"] = out["dataset_short"].map(DATASET_LABELS).fillna(out["dataset_short"])
-    out["stage_name"] = out["stage_name"].map(STAGE_LABELS).fillna(out["stage_name"])
-    out = out.rename(
-        columns={
-            "dataset_short": "Dataset",
-            "stage_name": "Stage",
-            "task_id": "Task ID",
-            "candidate_rank": "Rank",
-            "iscoGroup": "ISCO",
-            "isco_title": "Occupation label",
-            "similarity": "Similarity",
-            "kept_reason": "Reason",
-        }
-    )
-    out["Rank"] = pd.to_numeric(out["Rank"], errors="coerce").fillna(0).astype(int)
-    out["Similarity"] = _fmt_float(out["Similarity"], 3)
-    return out
 
 
 def _baseline_stage_tex() -> str | None:
@@ -455,13 +460,13 @@ def _task_examples_tex() -> str | None:
         task = _esc(str(row["task_text"]))
         soc = _esc(str(row["soc_title"]))
         dwa_str = _esc(str(row["dwa_titles"])) if pd.notna(row.get("dwa_titles")) else "---"
-        isco = _esc(f"{int(row['iscoGroup'])} {row['isco_title']}")
+        isco = _esc(str(row["isco_title"]))
         rows.append(f"    {task} & {soc} & {dwa_str} & {isco} \\\\")
 
     body = "\n\\midrule\n".join(rows)
 
     return (
-        r"\begin{tabular}{p{4.5cm}p{3cm}p{3.5cm}p{3.5cm}}"
+        r"\begin{tabular}{p{7.5cm}p{5.0cm}p{5.75cm}p{5.75cm}}"
         "\n\\toprule\n"
         "O*NET Task & SOC Occupation & DWA Labels (top 2) & ISCO-08 Assignment \\\\\n"
         "\\midrule\n"
@@ -564,10 +569,6 @@ TABLE_SPECS: list[tuple] = [
      False, None, None),
     ("table_reference_internal_comparison.csv", "table_reference_internal_comparison.tex", _reference_internal,
      False, None, None),
-    ("table_overload_examples.csv", "table_overload_examples.tex", _overload_examples,
-     True, r"ISCO-08 unit groups attracting the highest number of task assignments in the final output, shown for all O*NET releases.", "tab:overload"),
-    ("table_stage_task_examples.csv", "table_stage_task_examples.tex", _stage_examples,
-     False, None, None),
 ]
 
 
@@ -591,6 +592,7 @@ def main() -> None:
         (_mismatch_tex, "table_mismatch_examples.tex"),
         (_task_examples_tex, "table_task_examples.tex"),
         (_baseline_stage_tex, "table_baseline_stage_metrics.tex"),
+        (_overload_tex, "table_overload_examples.tex"),
     ]:
         content = generator()
         if content is None:
