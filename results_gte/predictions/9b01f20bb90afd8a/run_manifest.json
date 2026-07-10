@@ -1,0 +1,85 @@
+{
+  "config": {
+    "checkpoint_prefix": "ONET292_GTE",
+    "data_version": "managed-occupation-standards",
+    "dataset_name": "ONET292_GTE",
+    "embedding_cache_dir": "checkpoints",
+    "embedding_model": "thenlper/gte-large",
+    "esco_occupation_rel_path": "data/esco/occupationSkillRelations_en.csv",
+    "esco_occupations_path": "data/esco/occupations_en.csv",
+    "esco_release": "ESCO_en",
+    "esco_skills_path": "data/esco/skills_en.csv",
+    "faiss_index_type": "FlatIP",
+    "final_output_path": "output/ONET292_gte_task_to_ISCO_crosswalk.csv",
+    "include_esco_skills": true,
+    "include_soc_title": true,
+    "isco_tasks_path": "data/isco/ISCO-08 EN Structure and definitions.xlsx",
+    "k_retrieve": 5,
+    "limit_tasks": null,
+    "lowconf_entropy_threshold": 1.2,
+    "lowconf_gap_threshold": 0.01,
+    "margin_best": 0.03,
+    "max_links_per_task": 1,
+    "min_sim": 0.45,
+    "normalize_embeddings": true,
+    "onet_release": "db_29_2_excel",
+    "onet_tasks_dwa_path": "data/onet/29_2/Tasks to DWAs.xlsx",
+    "onet_tasks_path": "data/onet/29_2/Task Statements.xlsx",
+    "output_dir": "results_gte",
+    "overload_abs": 200,
+    "overload_quantile": 0.95,
+    "random_seed": 42,
+    "slim_output": false,
+    "softmax_temperature": 0.05,
+    "use_task_ids": true,
+    "w_dwa": 0.03,
+    "w_isco": 0.8,
+    "w_isco_task": 0.6,
+    "w_occ": 0.6,
+    "w_soc_title": 0.675
+  },
+  "extra": {
+    "code_version": "310cda27d2a1a92e9e0136875a2acf0eadee1974"
+  },
+  "inputs_hashes": {
+    "esco_occupation_rel_path": {
+      "mtime_ns": 1776535332772058100,
+      "path": "data\\esco\\occupationSkillRelations_en.csv",
+      "size": 22008250
+    },
+    "esco_occupations_path": {
+      "mtime_ns": 1776535332549735300,
+      "path": "data\\esco\\occupations_en.csv",
+      "size": 2865671
+    },
+    "esco_skills_path": {
+      "mtime_ns": 1776535332683285500,
+      "path": "data\\esco\\skills_en.csv",
+      "size": 9281785
+    },
+    "isco_tasks_path": {
+      "mtime_ns": 1776535332882648700,
+      "path": "data\\isco\\ISCO-08 EN Structure and definitions.xlsx",
+      "size": 303771
+    },
+    "onet_tasks_dwa_path": {
+      "mtime_ns": 1776535331805325500,
+      "path": "data\\onet\\29_2\\Tasks to DWAs.xlsx",
+      "size": 1645072
+    },
+    "onet_tasks_path": {
+      "mtime_ns": 1776535331712197400,
+      "path": "data\\onet\\29_2\\Task Statements.xlsx",
+      "size": 1396712
+    }
+  },
+  "metrics_paths": {
+    "metrics_csv": "results_gte\\metrics\\9b01f20bb90afd8a\\metrics.csv",
+    "metrics_json": "results_gte\\metrics\\9b01f20bb90afd8a\\metrics.json"
+  },
+  "run_id": "9b01f20bb90afd8a",
+  "stage_paths": {
+    "S1_RETRIEVE": "results_gte\\predictions\\9b01f20bb90afd8a\\S1_RETRIEVE.csv",
+    "S2_TASK_FILTER": "results_gte\\predictions\\9b01f20bb90afd8a\\S2_TASK_FILTER.csv"
+  }
+}
