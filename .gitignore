@@ -60,3 +60,7 @@ output/candidates/
 README.html
 README_files/
 PAPER_REVISION_NOTES.md
+
+# Auto-generated from fact_audit_table.md
+fact_audit_table.html
+fact_audit_table_files/
