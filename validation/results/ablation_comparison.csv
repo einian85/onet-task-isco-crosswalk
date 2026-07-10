@@ -1,0 +1,6 @@
+label,isco_groups,mean_sim,pct_coverage,pct_exact,pct_sub_major,pct_major_group
+Production (all components),401,0.718,99.9,81.7,90.1,94.2
+No SOC title,426,0.608,99.9,43.6,64.2,78.4
+No DWA labels,401,0.717,99.9,81.7,90.1,94.1
+No ESCO (ISCO-08 only),408,0.709,99.9,79.5,88.9,93.2
+Task text only,426,0.603,99.9,43.5,64.0,78.2

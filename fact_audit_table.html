@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>fact_audit_table</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="fact_audit_table_files/libs/clipboard/clipboard.min.js"></script>
+<script src="fact_audit_table_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="fact_audit_table_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="fact_audit_table_files/libs/quarto-html/popper.min.js"></script>
+<script src="fact_audit_table_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="fact_audit_table_files/libs/quarto-html/anchor.min.js"></script>
+<link href="fact_audit_table_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="fact_audit_table_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="fact_audit_table_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="fact_audit_table_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="fact_audit_table_files/libs/bootstrap/bootstrap-efbb37e9afcc02144ebbc7afd12a776f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="fact-audit-table-mapping-onet-tasks-to-isco-occupations-using-text-similarity" class="level1">
+<h1>Fact Audit Table — “Mapping O*NET Tasks to ISCO Occupations using Text Similarity”</h1>
+<p>All stated facts from the main paper and supplementary material (Online Appendix). Facts are listed in document order. Numbers are not reproduced; only the nature of each claim is described.</p>
+<hr>
+<section id="main-paper" class="level2">
+<h2 class="anchored" data-anchor-id="main-paper">Main Paper</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 25%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Fact</th>
+<th>Location</th>
+<th>Verification source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>O*NET is organized under the U.S. Standard Occupational Classification (SOC)</td>
+<td>Abstract; Introduction</td>
+<td>O*NET documentation / <code>onetcenter.org</code></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>International labour statistics use ISCO, not SOC</td>
+<td>Abstract; Introduction</td>
+<td>ILO ISCO-08 documentation</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Existing SOC–ISCO concordances operate at the occupation level</td>
+<td>Abstract; Introduction</td>
+<td>The four institutional crosswalks cited (ESCO–SOC18, BLS–SOC10, ESCO–O*NET)</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Number of O<em>NET tasks assigned in the crosswalk (O</em>NET 29.2)</td>
+<td>Abstract; Conclusion</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code> (row count)</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Number of ISCO-08 unit groups covered by the crosswalk</td>
+<td>Abstract; Conclusion</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code> (distinct ISCO codes)</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Exact four-digit validation agreement rate against institutional crosswalks (O*NET 29.2)</td>
+<td>Abstract; Section 4</td>
+<td>App. C, Table C1 (<code>table_gt01_validation.tex</code>)</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Major-group validation agreement rate (O*NET 29.2)</td>
+<td>Abstract; Section 4</td>
+<td>App. C, Table C1</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>O*NET task data widely used to measure technology exposure, skill demand, and occupational change</td>
+<td>Introduction</td>
+<td>Autor et al.&nbsp;2003; Acemoglu &amp; Autor 2011; Frey &amp; Osborne 2017</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Recent AI-exposure datasets are published at the O*NET task level</td>
+<td>Introduction</td>
+<td>Eloundou et al.&nbsp;2024 (GPTs paper)</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>AI-exposure indices exist for both SOC 2010 and SOC 2018 versions of O*NET</td>
+<td>Introduction</td>
+<td>Eloundou et al.&nbsp;2024</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Existing occupation-level crosswalks remove within-occupation task variation</td>
+<td>Introduction</td>
+<td>Structural argument; confirmed by inspecting cited concordances</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>O*NET 29.2 is the current release under the SOC 2018 taxonomy</td>
+<td>Section 2</td>
+<td>O*NET version history at <code>onetcenter.org</code></td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>O*NET 29.2 task count</td>
+<td>Section 2</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code> (distinct task IDs)</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>O*NET 25.0 is the final release under SOC 2010</td>
+<td>Section 2</td>
+<td>O*NET version history</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>O*NET 25.0 task count</td>
+<td>Section 2</td>
+<td><code>output/ONET100_task_to_ISCO_crosswalk.csv</code> (distinct task IDs)</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>Crosswalk files provided for all O*NET releases from v4.0 to v30.3</td>
+<td>Section 2</td>
+<td><code>output/</code> directory (all ONET*_task_to_ISCO_crosswalk.csv files)</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Total number of O*NET releases covered</td>
+<td>Section 2</td>
+<td><code>output/</code> directory file count</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>Official ISCO-08 task descriptions available for all but one of 436 unit groups</td>
+<td>Section 2</td>
+<td>ILO ISCO-08 official task descriptions (ISCO-08 database)</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>ISCO-08 unit group 1113 (Traditional Chiefs and Heads of Village) has no clear U.S. counterpart</td>
+<td>Section 2; Conclusion</td>
+<td>ISCO-08 documentation; absence in O*NET occupations</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>ESCO includes approximately 3,000 occupation concepts linked to ISCO-08</td>
+<td>Section 2</td>
+<td>ESCO dataset (<code>european_commission_esco_2019</code>)</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td>ESCO adds skill and competence information complementing official ISCO-08 descriptions</td>
+<td>Section 2</td>
+<td>ESCO database</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td>Four institutional SOC–ISCO-08 concordances used for validation only</td>
+<td>Section 2</td>
+<td>O<em>NET–ESCO (SOC18), ESCO–SOC18, BLS–SOC10, ESCO–O</em>NET crosswalk files</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td>Sentence encoder model used (<code>all-mpnet-base-v2</code>)</td>
+<td>Section 3</td>
+<td>Reimers &amp; Gurevych 2019; Hugging Face model card</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td>Embedding vectors dimension</td>
+<td>Section 3</td>
+<td><code>all-mpnet-base-v2</code> model documentation</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td>Task representations are unit-normalised real-valued vectors</td>
+<td>Section 3</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td>Task query combines task text, DWA labels, and SOC occupation title via convex weighting</td>
+<td>Section 3, Eq. 1</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td>ISCO-08 occupation representation combines ISCO task descriptions and ISCO title</td>
+<td>Section 3, Eq. 2</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="even">
+<td>28</td>
+<td>ESCO occupation representation combines ESCO occupation descriptions and ESCO skill texts</td>
+<td>Section 3, Eq. 3</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="odd">
+<td>29</td>
+<td>Multiple ESCO occupations mapping to same ISCO unit group have their embeddings averaged</td>
+<td>Section 3</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>Final occupation representation combines ISCO and ESCO components</td>
+<td>Section 3, Eq. 4</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="odd">
+<td>31</td>
+<td>Each task assigned to the single ISCO-08 group with highest cosine similarity</td>
+<td>Section 3</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="even">
+<td>32</td>
+<td>Minimum similarity threshold and margin used to assess confidence; all tasks still receive an assignment</td>
+<td>Section 3</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="odd">
+<td>33</td>
+<td>Validation uses institutional occupation-level SOC–ISCO crosswalks as external benchmark</td>
+<td>Section 4</td>
+<td>Methodology description</td>
+</tr>
+<tr class="even">
+<td>34</td>
+<td>Exact four-digit agreement rate for O*NET 29.2 (lenient benchmark)</td>
+<td>Section 4</td>
+<td>App. C, Table C1</td>
+</tr>
+<tr class="odd">
+<td>35</td>
+<td>Major-group agreement rate for O*NET 29.2</td>
+<td>Section 4</td>
+<td>App. C, Table C1</td>
+</tr>
+<tr class="even">
+<td>36</td>
+<td>Number of tasks shared between O<em>NET 29.2 and O</em>NET 25.0</td>
+<td>Section 4</td>
+<td>Crosswalk output files (task ID overlap)</td>
+</tr>
+<tr class="odd">
+<td>37</td>
+<td>Cross-version assignment agreement rate between O<em>NET 29.2 and O</em>NET 25.0</td>
+<td>Section 4</td>
+<td>Crosswalk output files</td>
+</tr>
+<tr class="even">
+<td>38</td>
+<td>Agreement rates robust to choice of reference crosswalk</td>
+<td>Section 4</td>
+<td>App. C, Tables C1–C2</td>
+</tr>
+<tr class="odd">
+<td>39</td>
+<td>Main parameter values: w_dwa, w_soc, w_isco, w_isco,task, w_occ</td>
+<td>Section 5</td>
+<td><code>pipeline.py</code> / <code>config.py</code></td>
+</tr>
+<tr class="even">
+<td>40</td>
+<td>Similarity threshold and margin parameter values</td>
+<td>Section 5</td>
+<td><code>pipeline.py</code> / <code>config.py</code></td>
+</tr>
+<tr class="odd">
+<td>41</td>
+<td>Low task-concentration share in the selected configuration</td>
+<td>Section 5</td>
+<td>App. A sweep output; App. E, Table E3</td>
+</tr>
+<tr class="even">
+<td>42</td>
+<td>Two overloaded groups each draw over 75% of tasks from a single SOC major group</td>
+<td>Section 5</td>
+<td>App. E, Table E3 (<code>table_overload_examples.tex</code>)</td>
+</tr>
+<tr class="odd">
+<td>43</td>
+<td>Small DWA weight improves performance over excluding DWA entirely</td>
+<td>Section 5</td>
+<td>App. A sweep results (Figure A2)</td>
+</tr>
+<tr class="even">
+<td>44</td>
+<td>Large DWA weights reduce performance</td>
+<td>Section 5</td>
+<td>App. A sweep results (Figure A2)</td>
+</tr>
+<tr class="odd">
+<td>45</td>
+<td>High SOC occupation title weight produces more stable assignments</td>
+<td>Section 5</td>
+<td>App. A sweep results (Figures A1–A2)</td>
+</tr>
+<tr class="even">
+<td>46</td>
+<td>Combining ISCO-08 task descriptions with ESCO text improves retrieval over either source alone</td>
+<td>Section 5</td>
+<td>App. A sweep results (Figure A1)</td>
+</tr>
+<tr class="odd">
+<td>47</td>
+<td>The crosswalk covers a specific count of ISCO-08 four-digit unit groups</td>
+<td>Conclusion</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code></td>
+</tr>
+<tr class="even">
+<td>48</td>
+<td>Limitation: ISCO groups without a functional U.S. counterpart cannot be matched</td>
+<td>Conclusion</td>
+<td>Structural argument; ISCO-08 documentation</td>
+</tr>
+<tr class="odd">
+<td>49</td>
+<td>ISCO 1113 is the most notable unmatched group</td>
+<td>Conclusion</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code> (absent ISCO codes)</td>
+</tr>
+<tr class="even">
+<td>50</td>
+<td>Dataset and replication materials available at Zenodo DOI</td>
+<td>Conclusion; Data Availability</td>
+<td>Zenodo repository</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="online-appendix-supplementary-material" class="level2">
+<h2 class="anchored" data-anchor-id="online-appendix-supplementary-material">Online Appendix (Supplementary Material)</h2>
+<section id="appendix-a-parameter-selection" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-a-parameter-selection">Appendix A — Parameter Selection</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 25%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Fact</th>
+<th>Location</th>
+<th>Verification source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>51</td>
+<td>Parameter sweep conducted on O*NET 29.2 (most recent SOC 2018 release at time of selection)</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> sweep logs</td>
+</tr>
+<tr class="even">
+<td>52</td>
+<td>Five blend weights swept: w_soc, w_dwa, w_isco, w_isco-task, w_occ, each in [0, 1]</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> / <code>config.py</code></td>
+</tr>
+<tr class="odd">
+<td>53</td>
+<td>Component embeddings are pre-computed and shared across all candidate configurations</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> (embedding cache)</td>
+</tr>
+<tr class="even">
+<td>54</td>
+<td>Query-weight feasibility constraint (w_soc + w_dwa ≤ 0.90)</td>
+<td>App. A</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="odd">
+<td>55</td>
+<td>Round 1 initial grid size (5^5 = 3,125 candidates, reduced to feasible subset)</td>
+<td>App. A</td>
+<td>Sweep log / pipeline output</td>
+</tr>
+<tr class="even">
+<td>56</td>
+<td>Total candidate configurations across six rounds</td>
+<td>App. A</td>
+<td>Sweep log</td>
+</tr>
+<tr class="odd">
+<td>57</td>
+<td>Per-round configuration counts for each of the six rounds</td>
+<td>App. A</td>
+<td>Sweep log</td>
+</tr>
+<tr class="even">
+<td>58</td>
+<td>Adaptive zoom trust-region strategy for re-gridding between rounds</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> (sweep algorithm)</td>
+</tr>
+<tr class="odd">
+<td>59</td>
+<td>Sweep terminates when improvement is below threshold AND all parameters interior AND all steps below Round 1 size</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> (termination condition)</td>
+</tr>
+<tr class="even">
+<td>60</td>
+<td>Improvement threshold corresponds approximately to 0.15 pp change in coverage</td>
+<td>App. A</td>
+<td>Mathematical approximation; sweep log</td>
+</tr>
+<tr class="odd">
+<td>61</td>
+<td>Sweep score formula: (3·cov + 2·sim − 2·overload − 2·gini) / 9</td>
+<td>App. A, Eq.</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="even">
+<td>62</td>
+<td>Overload threshold definition: T = max(200, Q_0.95)</td>
+<td>App. A</td>
+<td><code>pipeline.py</code></td>
+</tr>
+<tr class="odd">
+<td>63</td>
+<td>Sweep score range bounds (theoretical min and max)</td>
+<td>App. A</td>
+<td>Mathematical derivation from formula</td>
+</tr>
+<tr class="even">
+<td>64</td>
+<td>Overload share range across all 16,000 candidate configurations</td>
+<td>App. A</td>
+<td>Sweep log</td>
+</tr>
+<tr class="odd">
+<td>65</td>
+<td>Selected configuration’s sweep score, coverage, mean similarity, Gini, and overload share</td>
+<td>App. A</td>
+<td>Sweep log / <code>table_sweep_top_configs.tex</code></td>
+</tr>
+<tr class="even">
+<td>66</td>
+<td>Selected configuration parameter values (w_soc, w_dwa, w_isco, w_isco-task, w_occ)</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> / <code>config.py</code>; sweep log</td>
+</tr>
+<tr class="odd">
+<td>67</td>
+<td>Two overloaded groups (ISCO 2310, ISCO 1345) each draw over 75% of tasks from a single SOC major group</td>
+<td>App. A</td>
+<td>App. E, Table E3</td>
+</tr>
+<tr class="even">
+<td>68</td>
+<td>Top candidate configurations all achieve near-complete ISCO-08 coverage (99.8–100%)</td>
+<td>App. A</td>
+<td><code>table_sweep_top_configs.tex</code></td>
+</tr>
+<tr class="odd">
+<td>69</td>
+<td>Effective query-side contributions: SOC title, raw task text, DWA labels (derived from sequential blend)</td>
+<td>App. A</td>
+<td>Mathematical derivation from selected weights</td>
+</tr>
+<tr class="even">
+<td>70</td>
+<td>ESCO skill inventory is the single largest contributor to the target embedding</td>
+<td>App. A</td>
+<td>Mathematical derivation from selected weights</td>
+</tr>
+<tr class="odd">
+<td>71</td>
+<td>Nominal target-side weight breakdown: ESCO skills, ISCO task items, ISCO information text, ESCO occupation text</td>
+<td>App. A</td>
+<td>Mathematical derivation from selected weights</td>
+</tr>
+<tr class="even">
+<td>72</td>
+<td>DWA labels provide positive contribution at approx. w_dwa ≈ 0.27; neither zero nor dominant is optimal</td>
+<td>App. A</td>
+<td>Sweep results (Figure A2)</td>
+</tr>
+<tr class="odd">
+<td>73</td>
+<td>ESCO skill vocabulary bridges O*NET task language and ISCO-08 unit groups better than ISCO descriptions alone</td>
+<td>App. A</td>
+<td>Sweep results (Figure A1)</td>
+</tr>
+<tr class="even">
+<td>74</td>
+<td>Relatively low weight on ISCO-08 text is consistent with sparseness of ISCO-08 task lists for some groups</td>
+<td>App. A</td>
+<td>ISCO-08 documentation; sweep results</td>
+</tr>
+<tr class="odd">
+<td>75</td>
+<td>Sweep is fully deterministic (embeddings cached and reloaded identically)</td>
+<td>App. A</td>
+<td><code>pipeline.py</code> (caching logic)</td>
+</tr>
+<tr class="even">
+<td>76</td>
+<td>No ties in best configuration arose across the six rounds</td>
+<td>App. A</td>
+<td>Sweep log</td>
+</tr>
+<tr class="odd">
+<td>77</td>
+<td>High-score configurations cluster in a narrow region of parameter space</td>
+<td>App. A</td>
+<td><code>table_sweep_top_configs.tex</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="appendix-b-validation-framework" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-b-validation-framework">Appendix B — Validation Framework</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 25%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Fact</th>
+<th>Location</th>
+<th>Verification source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>78</td>
+<td>Task-level assignments aggregated to SOC occupation level by taking the modal ISCO group</td>
+<td>App. B</td>
+<td><code>pipeline.py</code> / <code>report_publication.py</code></td>
+</tr>
+<tr class="even">
+<td>79</td>
+<td>Strict benchmark definition: pipeline assignment must fall in every available crosswalk’s set</td>
+<td>App. B</td>
+<td>Methodology; <code>report_publication.py</code></td>
+</tr>
+<tr class="odd">
+<td>80</td>
+<td>Lenient benchmark definition: pipeline assignment must fall in at least one crosswalk’s set</td>
+<td>App. B</td>
+<td>Methodology; <code>report_publication.py</code></td>
+</tr>
+<tr class="even">
+<td>81</td>
+<td>Main text reports lenient benchmark results</td>
+<td>App. B</td>
+<td>Matches Section 4 of main paper</td>
+</tr>
+<tr class="odd">
+<td>82</td>
+<td>Institutional crosswalks are used only for validation, not for constructing the mapping</td>
+<td>App. B</td>
+<td>Methodology description</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="appendix-c-full-validation-results" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-c-full-validation-results">Appendix C — Full Validation Results</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 25%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Fact</th>
+<th>Location</th>
+<th>Verification source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>83</td>
+<td>Pipeline applied to all O*NET releases from v4.0 to v30.3 (63 releases total)</td>
+<td>App. C</td>
+<td><code>output/</code> directory; sweep/pipeline logs</td>
+</tr>
+<tr class="even">
+<td>84</td>
+<td>Five SOC taxonomy generations covered: pre-2006, SOC 2006, SOC 2009, SOC 2010, SOC 2018</td>
+<td>App. C</td>
+<td>O*NET version documentation</td>
+</tr>
+<tr class="odd">
+<td>85</td>
+<td>ESCO–ONET-SOC chain crosswalks cover SOC 2018 (O*NET 25.1 onward)</td>
+<td>App. C</td>
+<td>Institutional crosswalk documentation</td>
+</tr>
+<tr class="even">
+<td>86</td>
+<td>ESCO–O*NET and BLS–ISCO crosswalks cover SOC 2010</td>
+<td>App. C</td>
+<td>Institutional crosswalk documentation</td>
+</tr>
+<tr class="odd">
+<td>87</td>
+<td>Occupation-level comparison uses modal ISCO per SOC occupation</td>
+<td>App. C</td>
+<td><code>report_publication.py</code></td>
+</tr>
+<tr class="even">
+<td>88</td>
+<td>Pair precision is structurally low because pipeline assigns one ISCO per SOC while institutional crosswalks list several</td>
+<td>App. C</td>
+<td>Structural argument; <code>table_occupation_level_comparison.tex</code></td>
+</tr>
+<tr class="odd">
+<td>89</td>
+<td>In-set rate is the appropriate primary accuracy measure</td>
+<td>App. C</td>
+<td>Methodology reasoning</td>
+</tr>
+<tr class="even">
+<td>90</td>
+<td>Pair precision, pair recall, and F1 reported for completeness</td>
+<td>App. C</td>
+<td><code>table_occupation_level_comparison.tex</code></td>
+</tr>
+<tr class="odd">
+<td>91</td>
+<td>SOC 2010 and SOC 2018 pair precision / in-set rates not directly comparable (different instrument cardinalities)</td>
+<td>App. C</td>
+<td>Methodology caveat</td>
+</tr>
+<tr class="even">
+<td>92</td>
+<td>Mismatch example: Proofreaders and Copy Markers (SOC 43-9081) — pipeline assigns ISCO 4413, crosswalk assigns ISCO 2642</td>
+<td>App. C</td>
+<td><code>table_mismatch_examples.tex</code></td>
+</tr>
+<tr class="odd">
+<td>93</td>
+<td>Mismatch example: Survey Researchers (SOC 19-3022) — pipeline assigns ISCO 4227, BLS crosswalk assigns ISCO 2120</td>
+<td>App. C</td>
+<td><code>table_mismatch_examples.tex</code></td>
+</tr>
+<tr class="even">
+<td>94</td>
+<td>In-set rate is a lower bound on true quality when the reference crosswalk contains errors</td>
+<td>App. C</td>
+<td>Methodology argument</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="appendix-d-author-annotation" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-d-author-annotation">Appendix D — Author Annotation</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 25%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Fact</th>
+<th>Location</th>
+<th>Verification source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>95</td>
+<td>Number of O*NET 29.2 tasks annotated by the author</td>
+<td>App. D</td>
+<td>Annotation workbook</td>
+</tr>
+<tr class="even">
+<td>96</td>
+<td>Tasks drawn from a specific number of SOC occupations covering all nine ISCO major groups</td>
+<td>App. D</td>
+<td>Annotation workbook</td>
+</tr>
+<tr class="odd">
+<td>97</td>
+<td>Occupations selected by combined U.S. and Nordic employment within each major group</td>
+<td>App. D</td>
+<td>Annotation workbook; employment data</td>
+</tr>
+<tr class="even">
+<td>98</td>
+<td>Tasks selected by O*NET importance score (top three per occupation)</td>
+<td>App. D</td>
+<td>Annotation workbook; O*NET task importance ratings</td>
+</tr>
+<tr class="odd">
+<td>99</td>
+<td>Author assigned ISCO-08 four-digit unit groups independently of pipeline predictions</td>
+<td>App. D</td>
+<td>Methodology</td>
+</tr>
+<tr class="even">
+<td>100</td>
+<td>Selected configuration’s exact four-digit agreement with author annotations</td>
+<td>App. D</td>
+<td>Annotation workbook vs.&nbsp;pipeline output</td>
+</tr>
+<tr class="odd">
+<td>101</td>
+<td>Selected configuration’s two-digit sub-major agreement with author annotations</td>
+<td>App. D</td>
+<td>Annotation workbook vs.&nbsp;pipeline output</td>
+</tr>
+<tr class="even">
+<td>102</td>
+<td>Selected configuration’s one-digit major-group agreement with author annotations</td>
+<td>App. D</td>
+<td>Annotation workbook vs.&nbsp;pipeline output</td>
+</tr>
+<tr class="odd">
+<td>103</td>
+<td>Selected configuration’s mean cosine similarity on annotated tasks</td>
+<td>App. D</td>
+<td>Pipeline output for annotated task subset</td>
+</tr>
+<tr class="even">
+<td>104</td>
+<td>Selected configuration’s exact agreement on the automated chain-crosswalk benchmark (lenient union)</td>
+<td>App. D</td>
+<td>App. C, Table C1</td>
+</tr>
+<tr class="odd">
+<td>105</td>
+<td>Author annotation is a single-annotator consistency check, not a definitive gold standard</td>
+<td>App. D</td>
+<td>Methodology caveat</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="appendix-e-coverage-and-example-matches" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-e-coverage-and-example-matches">Appendix E — Coverage and Example Matches</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 25%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Fact</th>
+<th>Location</th>
+<th>Verification source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>106</td>
+<td>O*NET releases prior to v20.1 distributed data in text format only</td>
+<td>App. E</td>
+<td>O*NET version archives</td>
+</tr>
+<tr class="even">
+<td>107</td>
+<td>Excel format available from O*NET v20.1 onward</td>
+<td>App. E</td>
+<td>O*NET version archives</td>
+</tr>
+<tr class="odd">
+<td>108</td>
+<td>Occupation titles merged from <code>Occupation Data.txt</code> for pre-v20.1 releases</td>
+<td>App. E</td>
+<td><code>pipeline.py</code> (data loading logic)</td>
+</tr>
+<tr class="even">
+<td>109</td>
+<td>All parameters and thresholds are identical across O*NET versions (only input data differs)</td>
+<td>App. E</td>
+<td><code>pipeline.py</code> / <code>config.py</code></td>
+</tr>
+<tr class="odd">
+<td>110</td>
+<td>For O*NET 29.2, mapping assigns tasks to a specific count of ISCO-08 unit groups out of 436</td>
+<td>App. E</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code></td>
+</tr>
+<tr class="even">
+<td>111</td>
+<td>Only unmatched ISCO group: ISCO 7516 (Tobacco Preparers and Tobacco Products Makers)</td>
+<td>App. E</td>
+<td><code>output/ONET110_task_to_ISCO_crosswalk.csv</code> (absent ISCO codes)</td>
+</tr>
+<tr class="odd">
+<td>112</td>
+<td>Differences in task counts across ISCO groups reflect SOC–ISCO taxonomy asymmetry, not assignment errors</td>
+<td>App. E</td>
+<td>Structural argument; Table E3</td>
+</tr>
+<tr class="even">
+<td>113</td>
+<td>High-concentration ISCO groups draw over 75% of tasks from a single SOC major group</td>
+<td>App. E</td>
+<td><code>table_overload_examples.tex</code></td>
+</tr>
+<tr class="odd">
+<td>114</td>
+<td>Coverage and mean similarity evolution across pipeline stages (S1–S3) documented for all releases</td>
+<td>App. E</td>
+<td>Figure E1 (<code>figure_stage_progression.pgf</code>)</td>
+</tr>
+<tr class="even">
+<td>115</td>
+<td>Retrieval stage (S1) achieves broad coverage at cost of many candidates per task; filtering stages tighten precision</td>
+<td>App. E</td>
+<td>Figure E1; <code>table_baseline_stage_metrics.tex</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>Generated 2026-06-23. Verification paths point to files in the <code>output/</code> directory of the <code>onet-task-isco-crosswalk</code> repo or to external data sources.</em></p>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
