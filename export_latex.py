@@ -407,7 +407,9 @@ def _task_examples_tex() -> str | None:
 
     df_s5 = pd.read_csv(CROSSWALK_PATH)
     if "stage" in df_s5.columns:
-        df_s5 = df_s5[df_s5["stage"] == "S3_COVERAGE"].copy()
+        df_s5 = df_s5[df_s5["stage"] == "S5_FINAL"].copy()
+    elif "is_best" in df_s5.columns:
+        df_s5 = df_s5[df_s5["is_best"] == True].copy()  # noqa: E712
 
     tasks = pd.read_excel(ONET_TASKS_PATH)
     dwa = pd.read_excel(ONET_DWA_PATH)
