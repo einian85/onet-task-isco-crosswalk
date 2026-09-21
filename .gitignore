@@ -64,3 +64,9 @@ PAPER_REVISION_NOTES.md
 # Auto-generated from fact_audit_table.md
 fact_audit_table.html
 fact_audit_table_files/
+
+# Stale/superseded artifacts kept locally for reference only
+archive/
+
+# Working notes for the current revision cycle (not for publication)
+REVISION_TASKS_SJI.md

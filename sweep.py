@@ -96,48 +96,36 @@ def _add_baseline_deltas(results: pd.DataFrame, baseline_run_id: str) -> pd.Data
     return out
 
 
-def _normalized_series(series: pd.Series, higher_is_better: bool) -> pd.Series:
-    values = pd.to_numeric(series, errors="coerce").astype(float)
-    finite = values.replace([np.inf, -np.inf], np.nan)
-    min_v = finite.min()
-    max_v = finite.max()
-    if pd.isna(min_v) or pd.isna(max_v):
-        return pd.Series(0.0, index=series.index)
-    if abs(max_v - min_v) < 1e-12:
-        return pd.Series(1.0, index=series.index)
-    scaled = (finite - min_v) / (max_v - min_v)
-    if not higher_is_better:
-        scaled = 1.0 - scaled
-    return scaled.fillna(0.0)
-
-
 def _add_composite_score(results: pd.DataFrame) -> pd.DataFrame:
+    """Paper's Appendix A sweep score: (3*cov + 2*sim - 2*overload - 2*gini) / 9, raw (not
+    min-max normalized), computed only from S5_FINAL (final-assignment stage) metrics.
+
+    This must stay numerically identical to sweep/run_systematic_sweep_onet29.py::_sweep_score
+    and validation/score_candidates.py, which independently compute the same formula. A prior
+    version of this function used a different, min-max-normalized 9-metric blend that never
+    matched the paper's stated formula — see project_config_selection_bug memory / Phase A of
+    REVISION_TASKS_SJI.md for how that produced a wrong "selected configuration" in the paper.
+    """
     if results.empty:
         return results
     out = results.copy()
-    score_spec = {
-        "S5_FINAL_isco_coverage_share": (3.0, True),
-        "S5_FINAL_mean_similarity_retained": (2.0, True),
-        "S5_FINAL_share_tasks_in_overloaded_isco": (2.0, False),
-        "S5_FINAL_gini_tasks_per_isco": (2.0, False),
-        "S5_FINAL_mean_links_per_task": (1.0, False),
-        "S5_best_link_agreement": (2.0, True),
-        "S5_jaccard_links": (2.0, True),
-        "S1_RETRIEVE_retrieval_lowconf_share": (1.0, False),
-        "S1_RETRIEVE_retrieval_gap12_median": (1.0, True),
-    }
-    available = {k: v for k, v in score_spec.items() if k in out.columns}
-    if not available:
+    required = [
+        "S5_FINAL_isco_coverage_share",
+        "S5_FINAL_mean_similarity_retained",
+        "S5_FINAL_share_tasks_in_overloaded_isco",
+        "S5_FINAL_gini_tasks_per_isco",
+    ]
+    if not all(col in out.columns for col in required):
         out["selection_score"] = np.nan
         out["selection_rank"] = np.nan
         return out
 
-    score = pd.Series(0.0, index=out.index, dtype=float)
-    total_weight = 0.0
-    for col, (weight, higher_is_better) in available.items():
-        score = score + weight * _normalized_series(out[col], higher_is_better)
-        total_weight += weight
-    out["selection_score"] = score / total_weight if total_weight else score
+    cov = pd.to_numeric(out["S5_FINAL_isco_coverage_share"], errors="coerce").fillna(0.0)
+    sim = pd.to_numeric(out["S5_FINAL_mean_similarity_retained"], errors="coerce").fillna(0.0)
+    overload = pd.to_numeric(out["S5_FINAL_share_tasks_in_overloaded_isco"], errors="coerce").fillna(0.0)
+    gini = pd.to_numeric(out["S5_FINAL_gini_tasks_per_isco"], errors="coerce").fillna(0.0)
+
+    out["selection_score"] = (3 * cov + 2 * sim - 2 * overload - 2 * gini) / 9
     out["selection_rank"] = out["selection_score"].rank(method="dense", ascending=False).astype(int)
     return out
 

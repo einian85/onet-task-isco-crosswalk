@@ -93,9 +93,9 @@ def _sweep_top(df: pd.DataFrame) -> pd.DataFrame:
             "changed_param",
             "changed_value",
             "selection_score",
-            "S3_COVERAGE_isco_coverage_share",
-            "S3_COVERAGE_mean_similarity_retained",
-            "S3_COVERAGE_gini_tasks_per_isco",
+            "S5_FINAL_isco_coverage_share",
+            "S5_FINAL_mean_similarity_retained",
+            "S5_FINAL_gini_tasks_per_isco",
         ]
     ].copy()
     out = out.rename(
@@ -104,13 +104,13 @@ def _sweep_top(df: pd.DataFrame) -> pd.DataFrame:
             "changed_param": "Changed parameter",
             "changed_value": "Value",
             "selection_score": "Selection score",
-            "S3_COVERAGE_isco_coverage_share": "S3 coverage",
-            "S3_COVERAGE_mean_similarity_retained": "S3 mean similarity",
-            "S3_COVERAGE_gini_tasks_per_isco": "S3 Gini",
+            "S5_FINAL_isco_coverage_share": "Coverage",
+            "S5_FINAL_mean_similarity_retained": "Mean similarity",
+            "S5_FINAL_gini_tasks_per_isco": "Gini",
         }
     )
     out["Rank"] = pd.to_numeric(out["Rank"], errors="coerce").fillna(0).astype(int)
-    for col in ["Selection score", "S3 coverage", "S3 mean similarity", "S3 Gini"]:
+    for col in ["Selection score", "Coverage", "Mean similarity", "Gini"]:
         out[col] = _fmt_float(out[col], 3)
     return out
 

@@ -250,10 +250,10 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
         "pareto_candidate",
         "changed_param",
         "changed_value",
-        "S3_COVERAGE_isco_coverage_share",
-        "S3_COVERAGE_mean_similarity_retained",
-        "S3_COVERAGE_mean_links_per_task",
-        "S3_COVERAGE_gini_tasks_per_isco",
+        "S5_FINAL_isco_coverage_share",
+        "S5_FINAL_mean_similarity_retained",
+        "S5_FINAL_mean_links_per_task",
+        "S5_FINAL_gini_tasks_per_isco",
     ]
     top_table = df[top_cols].sort_values(["selection_rank", "run_id"]).head(12).reset_index(drop=True)
 
@@ -270,10 +270,10 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
                 "run_id": best["run_id"],
                 "selection_rank": best["selection_rank"],
                 "selection_score": best["selection_score"],
-                "S3_coverage": best["S3_COVERAGE_isco_coverage_share"],
-                "S3_mean_similarity": best["S3_COVERAGE_mean_similarity_retained"],
-                "S3_mean_links_per_task": best["S3_COVERAGE_mean_links_per_task"],
-                "S3_gini_tasks_per_isco": best["S3_COVERAGE_gini_tasks_per_isco"],
+                "S5_coverage": best["S5_FINAL_isco_coverage_share"],
+                "S5_mean_similarity": best["S5_FINAL_mean_similarity_retained"],
+                "S5_mean_links_per_task": best["S5_FINAL_mean_links_per_task"],
+                "S5_gini_tasks_per_isco": best["S5_FINAL_gini_tasks_per_isco"],
             }
         )
     per_param_table = pd.DataFrame(per_param_rows).sort_values("parameter").reset_index(drop=True)

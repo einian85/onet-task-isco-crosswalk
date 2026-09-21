@@ -136,6 +136,33 @@ CANDIDATES: list[dict[str, object]] = [
             "overload_margin_best": 0.02,
         },
     },
+    # ── True systematic-sweep optimum (round-6 convergence, re-derived 2026-09) ────────
+    # The genuine round-by-round adaptive-zoom sweep (6 rounds, 16,000 candidates,
+    # results/summary/sweep_results_metrics_only.csv) converges here when re-scored with
+    # the paper's own raw sweep_score formula per round. These are also the weights that
+    # were in configs/config_onet292.yaml before commit 1d3ac47 ("Correct config weights",
+    # 2026-06-23) overwrote them with the current 0.675/0.030/0.80/0.60/0.60 values for
+    # reasons that are no longer documented or recalled. Included here to validate against
+    # ground truth before deciding whether it should replace the current production config.
+    {
+        "label": "sw_s375_d266_i38_t73_o16",
+        "description": "True systematic-sweep round-6 optimum (w_dwa=0.2656, w_soc=0.375, w_isco=0.375, w_isco_task=0.7344, w_occ=0.1562)",
+        "overrides": {
+            "w_isco": 0.375,
+            "w_dwa": 0.2656,
+            "w_soc_title": 0.375,
+            "w_occ": 0.1562,
+            "w_isco_task": 0.7344,
+            "min_sim": 0.45,
+            "margin_best": 0.03,
+            "max_links_per_task": 1,
+            "k_retrieve": 5,
+            "overload_abs": 200,
+            "overload_quantile": 0.95,
+            "overload_min_sim": 0.55,
+            "overload_margin_best": 0.02,
+        },
+    },
     # ── Baseline: no DWA ────────────────────────────────────────────────────────────────
     {
         "label": "fg_isco08_dwa00_soc65",

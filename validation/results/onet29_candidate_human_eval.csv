@@ -3,4 +3,5 @@ jf_d030_s675_i80_t60_o60,"Selected: joint sweep marginal optimum (w_dwa=0.030, w
 jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",108,54.6,71.3,80.6,0.698
 jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",108,54.6,70.4,81.5,0.7
 jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",108,54.6,70.4,81.5,0.701
+sw_s375_d266_i38_t73_o16,"True systematic-sweep round-6 optimum (w_dwa=0.2656, w_soc=0.375, w_isco=0.375, w_isco_task=0.7344, w_occ=0.1562)",108,36.1,57.4,72.2,0.739
 fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",108,50.9,68.5,79.6,0.7
