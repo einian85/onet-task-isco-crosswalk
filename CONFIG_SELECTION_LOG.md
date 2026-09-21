@@ -109,6 +109,27 @@ selection failure — and the disagreement audit above is the start of character
 agreement actually consists of, which is more nuanced than either "it's all noise" or "it's all
 signal."
 
+**Follow-up (2026-09-22): considered and rejected raising `w_soc_title` toward 0.50.** Materialized a
+scratch candidate at the sweep's best co-tuned point for `w_soc_title=0.50`
+(`w_dwa=0.3125, w_isco=0.375, w_isco_task=0.75, w_occ=0.25`; not added to `CANDIDATES`, not
+propagated to any config — exploration only, `output/candidates/ONET29_sw_s500_d313_i38_t75_o25_task_to_ISCO_crosswalk.csv`).
+Checked whether reweighting the composite score could get there on unsupervised grounds alone: no —
+confirmed again that de-emphasizing Gini barely moves the optimum (halving its weight: 0.375→0.391;
+removing it entirely: →0.406). Then checked whether the paper's own stated rationale for Gini/overload
+("penalises... excessive task concentration... which arise at extreme parameter values") could license
+treating 0.34–0.50 as an interchangeable plateau and picking a point within it using case-level
+disagreement review as a tie-breaker (of 60 sampled `w_soc=0.375` disagreements, 37% were fixed at
+`w_soc=0.50`, 47% were completely unaffected, 17% changed to a different wrong answer).
+
+**Rejected, correctly, by the user:** this is still circular. Judging "fixed" by whether a prediction
+now matches chain is chain-informed selection at the case level, not the aggregate level — same
+problem, finer grain. Doing this properly would require a genuine train/held-out split of the chain
+data (select using judgment on one part, validate against the other, never let the same data do both
+jobs) — which is real scope creep for this revision cycle, not a bug fix. **Decision: stay at
+`w_soc_title=0.375`, the actual unsupervised sweep optimum, with no case-level or aggregate validation
+input into the selection at all.** This is now settled; don't re-open it without proposing the
+train/held-out-split redesign explicitly as its own piece of work.
+
 **What changed in code (final state):**
 - `validation/score_candidates.py` — durable sweep-score recomputation from real output files.
 - `sweep.py::_add_composite_score` — computes the paper's actual raw formula (not the old normalized
