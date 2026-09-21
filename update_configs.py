@@ -1,18 +1,27 @@
 """
 update_configs.py
 Updates all config_onet*.yaml files with the weight parameters of whichever candidate in
-validation/compare_onet29_candidates.py's CANDIDATES list currently has the best validated
-performance (highest chain-exact agreement, tie-broken by human-exact agreement) in
-validation/results/onet29_candidate_comparison.csv.
+validation/compare_onet29_candidates.py's CANDIDATES list has the highest unsupervised sweep_score
+in validation/results/candidate_sweep_scores.csv (the paper's Appendix A formula, computed by
+validation/score_candidates.py).
 
-This intentionally does NOT use the raw unsupervised sweep_score to pick the winner: a 2026-09-21
-investigation (see CONFIG_SELECTION_LOG.md) found that a config with a much higher sweep_score
-(the true systematic-sweep round-6 optimum) validates far *worse* against ground truth (chain-exact
-68.0%, human-exact 36.1%) than the jf_* shortlist (81.6-82.0% / 54.6%). The unsupervised composite
-score is not a reliable enough proxy on its own — ground-truth validation must decide.
+Parameter selection is deliberately independent of chain/human validation. Chain and human agreement
+are reported as an out-of-sample check on whatever the unsupervised objective selects — using them to
+also pick among candidates would make that check circular (the reported agreement rate would just
+reflect which candidate was chosen to look best on it, not a genuine independent result). An earlier
+version of this script picked the candidate with the best chain/human validation instead; that was
+reverted on 2026-09-21 — see CONFIG_SELECTION_LOG.md.
 
-Before running this: make sure validation/compare_onet29_candidates.py has been run recently enough
-that onet29_candidate_comparison.csv reflects every candidate you want considered.
+A 2026-09-21 investigation found the true systematic-sweep optimum (highest sweep_score) validates
+far worse against chain/human ground truth than the previously-used jf_* shortlist (chain-exact 68.0%
+vs 81.6-82.0%, human-exact 36.1% vs 54.6%). That is not, on its own, a reason to reject the
+unsupervised objective's answer — see CONFIG_SELECTION_LOG.md for why, and
+validation/audit_chain_disagreements.py for the follow-up: checking whether the disagreements with
+the (occupation-level) chain crosswalk are actually task-level information the chain crosswalk
+cannot see, rather than errors.
+
+Before running this: make sure validation/score_candidates.py has been run recently enough that
+candidate_sweep_scores.csv reflects every candidate you want considered.
 """
 import re
 import sys
@@ -26,35 +35,21 @@ sys.path.insert(0, str(BASE / "validation"))
 
 from compare_onet29_candidates import CANDIDATES  # noqa: E402
 
-COMPARISON_PATH = BASE / "validation" / "results" / "onet29_candidate_comparison.csv"
 SWEEP_SCORE_PATH = BASE / "validation" / "results" / "candidate_sweep_scores.csv"
 
 
 def select_winner() -> tuple[str, dict[str, float]]:
-    if not COMPARISON_PATH.exists():
+    if not SWEEP_SCORE_PATH.exists():
         raise FileNotFoundError(
-            f"{COMPARISON_PATH} not found. Run validation/compare_onet29_candidates.py first."
+            f"{SWEEP_SCORE_PATH} not found. Run validation/score_candidates.py first."
         )
-    comparison = pd.read_csv(COMPARISON_PATH)
+    scores = pd.read_csv(SWEEP_SCORE_PATH)
     weights_by_label = {str(c["label"]): c["overrides"] for c in CANDIDATES}
-    comparison = comparison[comparison["candidate_label"].isin(weights_by_label)]
-    if comparison.empty:
-        raise ValueError("No rows in onet29_candidate_comparison.csv match CANDIDATES labels.")
+    scores = scores[scores["candidate_label"].isin(weights_by_label)]
+    if scores.empty:
+        raise ValueError("No rows in candidate_sweep_scores.csv match CANDIDATES labels.")
 
-    # Ground truth (chain-exact, then human-exact) decides first. Only when both are tied does
-    # the unsupervised sweep_score break the tie — see CONFIG_SELECTION_LOG.md for why sweep_score
-    # is deliberately NOT the primary criterion (it picked a config that validates far worse).
-    if SWEEP_SCORE_PATH.exists():
-        sweep_scores = pd.read_csv(SWEEP_SCORE_PATH)[["candidate_label", "sweep_score"]]
-        comparison = comparison.merge(sweep_scores, on="candidate_label", how="left")
-        comparison["sweep_score"] = comparison["sweep_score"].fillna(-1.0)
-    else:
-        comparison["sweep_score"] = -1.0
-
-    best = comparison.sort_values(
-        ["chain_pct_exact", "human_pct_exact", "sweep_score"],
-        ascending=[False, False, False],
-    ).iloc[0]
+    best = scores.sort_values("sweep_score", ascending=False).iloc[0]
     label = str(best["candidate_label"])
     return label, weights_by_label[label]
 

@@ -49,19 +49,24 @@ PUBLICATION_TABLE_DIR = PUBLICATION_DIR / "tables"
 PUBLICATION_TABLE_DIR.mkdir(parents=True, exist_ok=True)
 
 DISPLAY_NAMES: dict[str, str] = {
-    # Joint fine-sweep candidates (Phase 6)
-    "jf_d030_s675_i80_t60_o60": "C1$^*$ ($w_\\text{dwa}$=3.0\\%, $w_\\text{soc}$=67.5\\%)",
+    # Joint fine-sweep candidates (Phase 6) — NOT selected; kept for comparison only.
+    # See CONFIG_SELECTION_LOG.md: these were validated against chain/human ground truth,
+    # which makes that comparison useful context but disqualifies them from being "selected"
+    # by the unsupervised sweep_score, which must stay independent of validation.
+    "jf_d030_s675_i80_t60_o60": "C1 ($w_\\text{dwa}$=3.0\\%, $w_\\text{soc}$=67.5\\%)",
     "jf_d030_s675_i80_t57_o60": "C2 ($w_\\text{itsk}$=57.5\\%)",
     "jf_d030_s675_i75_t60_o60": "C3 ($w_\\text{isco}$=75\\%)",
     "jf_d050_s675_i75_t60_o60": "C4 ($w_\\text{dwa}$=5.0\\%, $w_\\text{isco}$=75\\%)",
     "fg_isco08_dwa00_soc65": "B0 ($w_\\text{dwa}$=0\\%, $w_\\text{soc}$=65.0\\%)",
+    # Selected: highest sweep_score, unsupervised, no validation input (2026-09-21).
+    "sw_s375_d266_i38_t73_o16": "S$^*$ ($w_\\text{dwa}$=26.6\\%, $w_\\text{soc}$=37.5\\%)",
 }
 
 CANDIDATES: list[dict[str, object]] = [
-    # ── Selected config (joint fine-sweep marginal optimum) ─────────────
+    # ── Not selected (see sw_s375_d266_i38_t73_o16 below) — kept for comparison ─────────
     {
         "label": "jf_d030_s675_i80_t60_o60",
-        "description": "Selected: joint sweep marginal optimum (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",
+        "description": "Not selected: joint fine-sweep candidate (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",
         "overrides": {
             "w_isco": 0.8,
             "w_dwa": 0.030,
@@ -146,7 +151,7 @@ CANDIDATES: list[dict[str, object]] = [
     # ground truth before deciding whether it should replace the current production config.
     {
         "label": "sw_s375_d266_i38_t73_o16",
-        "description": "True systematic-sweep round-6 optimum (w_dwa=0.2656, w_soc=0.375, w_isco=0.375, w_isco_task=0.7344, w_occ=0.1562)",
+        "description": "Selected: true systematic-sweep round-6 optimum, chosen by sweep_score alone, independent of validation (w_dwa=0.2656, w_soc=0.375, w_isco=0.375, w_isco_task=0.7344, w_occ=0.1562)",
         "overrides": {
             "w_isco": 0.375,
             "w_dwa": 0.2656,
@@ -398,7 +403,7 @@ def export_publication_artifacts(
     candidates: list[dict[str, object]],
 ) -> None:
     params = _candidate_parameter_table(candidates)
-    selected = "jf_d030_s675_i80_t60_o60"
+    selected = "sw_s375_d266_i38_t73_o16"
     def _apply_display(series: pd.Series) -> pd.Series:
         return series.map(lambda s: DISPLAY_NAMES.get(s, s))
 
