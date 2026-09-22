@@ -154,18 +154,22 @@ if not selected.empty:
 print("\n" + "=" * 70)
 print("SUMMARY OF KEY PAPER CLAIMS vs ACTUAL VALUES")
 print("=" * 70)
+print("(No hardcoded 'paper says' comparisons below - the ones previously here were")
+print(" from an old draft of the paper with a since-abandoned config and are not a")
+print(" meaningful check against the current submission. Compare the numbers below")
+print(" directly against the current paper_iaos.tex by hand.)")
 lenient_292 = eval292[eval292['label'].str.contains('union|A4', na=False)]
 if not lenient_292.empty:
     row = lenient_292.iloc[0]
     print(f"\nValidation (ONET292, lenient union):")
-    print(f"  Exact match:       {row['pct_exact']:.1f}%   [paper says 84.6%]")
-    print(f"  Major group:       {row['pct_major_group']:.1f}%   [paper says 94.7%]")
+    print(f"  Exact match:       {row['pct_exact']:.1f}%")
+    print(f"  Major group:       {row['pct_major_group']:.1f}%")
 
 print(f"\nParameters (from config_onet292.yaml):")
-print(f"  w_soc_title: {cfg.get('w_soc_title')}  [paper says 0.25]")
-print(f"  w_dwa:       {cfg.get('w_dwa')}   [paper says 0.125]")
-print(f"  w_isco:      {cfg.get('w_isco')}   [paper says 0.5]")
-print(f"  w_isco_task: {cfg.get('w_isco_task')}   [paper says 0.8125]")
-print(f"  w_occ:       {cfg.get('w_occ')}   [paper says 0.125]")
+print(f"  w_soc_title: {cfg.get('w_soc_title')}")
+print(f"  w_dwa:       {cfg.get('w_dwa')}")
+print(f"  w_isco:      {cfg.get('w_isco')}")
+print(f"  w_isco_task: {cfg.get('w_isco_task')}")
+print(f"  w_occ:       {cfg.get('w_occ')}")
 
-print(f"\nO*NET versions covered: {len(onet_configs)}  [paper says 'two versions']")
+print(f"\nO*NET versions covered: {len(onet_configs)}")
