@@ -1,0 +1,4 @@
+view,n_soc_occupations,share_spanning_gt1_isco,mean_distinct_isco,median_distinct_isco,max_distinct_isco
+task-level (this pipeline),798,96.6,6.51,6.0,33
+occupation-level (XW18.1_esco_to_onetsoc),797,89.5,4.75,4.0,40
+occupation-level (XW18.2_onetsoc_to_esco),784,71.7,2.62,2.0,18

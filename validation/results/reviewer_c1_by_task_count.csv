@@ -1,0 +1,5 @@
+min_tasks_per_soc,n_soc_occupations,mean_distinct_isco,median_distinct_isco
+1,798,6.51,6.0
+5,797,6.52,6.0
+10,777,6.62,6.0
+20,428,7.81,7.0
