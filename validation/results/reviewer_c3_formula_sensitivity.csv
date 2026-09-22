@@ -1,0 +1,9 @@
+formula,weights_cov_sim_overload_gini,argmax_w_soc_title,argmax_w_dwa,argmax_w_isco,argmax_w_isco_task,argmax_w_occ,distance_from_baseline_argmax,spearman_rho_vs_baseline,top10_jaccard_vs_baseline
+baseline_3220,"(3, 2, 2, 2)",0.375,0.2656,0.375,0.7344,0.1562,0.0,1.0,1.0
+equal_1111,"(1, 1, 1, 1)",0.375,0.2656,0.375,0.7344,0.1562,0.0,0.9996,1.0
+coverage_only,"(1, 0, 0, 0)",0.25,0.125,0.5,0.875,0.0,0.3085,0.2139,0.0
+similarity_only,"(0, 1, 0, 0)",0.375,0.5,0.375,0.75,0.125,0.237,0.5945,0.0
+no_gini,"(3, 2, 2, 0)",0.4062,0.2968,0.4062,0.75,0.2031,0.0732,0.9711,0.111
+no_overload,"(3, 2, 0, 2)",0.375,0.375,0.375,0.8125,0.125,0.138,0.7955,0.0
+gini_doubled,"(3, 2, 2, 4)",0.25,0.0,0.5,1.0,0.125,0.4163,0.9817,0.0
+coverage_deprioritized_1222,"(1, 2, 2, 2)",0.375,0.2656,0.375,0.7344,0.1562,0.0,0.9985,1.0
