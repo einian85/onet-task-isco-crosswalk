@@ -130,9 +130,9 @@ def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
             "parameter",
             "recommended_value",
             "selection_score",
-            "S3_coverage",
-            "S3_mean_similarity",
-            "S3_gini_tasks_per_isco",
+            "S5_coverage",
+            "S5_mean_similarity",
+            "S5_gini_tasks_per_isco",
         ]
     ].copy()
     out["parameter"] = out["parameter"].map(lambda x: _PARAM_LABELS.get(x, x))
@@ -141,12 +141,12 @@ def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
             "parameter": "Parameter",
             "recommended_value": "Recommended value",
             "selection_score": "Selection score",
-            "S3_coverage": "S3 coverage",
-            "S3_mean_similarity": "S3 mean similarity",
-            "S3_gini_tasks_per_isco": "S3 Gini",
+            "S5_coverage": "Coverage",
+            "S5_mean_similarity": "Mean similarity",
+            "S5_gini_tasks_per_isco": "Gini",
         }
     )
-    for col in ["Selection score", "S3 coverage", "S3 mean similarity", "S3 Gini"]:
+    for col in ["Selection score", "Coverage", "Mean similarity", "Gini"]:
         out[col] = _fmt_float(out[col], 3)
     return out
 
