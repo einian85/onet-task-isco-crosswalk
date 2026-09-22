@@ -36,7 +36,7 @@ from shared import (
 )
 
 N_SOC_PER_MAJOR = 4
-N_TASKS_PER_SOC = 3
+N_TASKS_PER_SOC = 5
 
 
 def generate_validation_sheet(
