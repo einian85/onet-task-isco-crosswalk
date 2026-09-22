@@ -1,0 +1,4 @@
+pair,n_soc_occupations,pct_exact,pct_sub_major,pct_major_group
+mpnet vs bge,798,79.4,85.5,87.7
+mpnet vs gte,798,79.8,85.0,87.1
+bge vs gte,798,88.8,92.5,93.7
