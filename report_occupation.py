@@ -382,16 +382,27 @@ def _get_run_id_from_crosswalk(crosswalk_path: Path) -> str:
         return str(df["run_id"].iloc[0])
     except (ValueError, KeyError):
         pass
-    # Newer format: match via run_manifest.json stored under results/predictions/
+    # Newer format: match via run_manifest.json stored under results/predictions/.
+    # Multiple manifests can match the same final_output_path (re-runs under different
+    # configs/weights over time) - pick by manifest mtime, not path string, since a
+    # reverse-alphabetical sort of hash-named directories has no relationship to
+    # recency and can silently pick a stale run from months ago (found 2026-09-22:
+    # this returned a June run over a same-day fresh one).
     import json
     preds_root = Path("results/predictions")
     target = str(crosswalk_path).replace("\\", "/")
-    for manifest in sorted(preds_root.glob("*/run_manifest.json"), reverse=True):
-        d = json.loads(manifest.read_text(encoding="utf-8"))
+    matching: list[tuple[Path, dict]] = []
+    for manifest in preds_root.glob("*/run_manifest.json"):
+        try:
+            d = json.loads(manifest.read_text(encoding="utf-8"))
+        except Exception:
+            continue
         cfg_path = d.get("config", {}).get("final_output_path", "").replace("\\", "/")
         if cfg_path == target or cfg_path.endswith(crosswalk_path.name):
-            return d["run_id"]
-    raise FileNotFoundError(f"No manifest found matching crosswalk {crosswalk_path}")
+            matching.append((manifest, d))
+    if not matching:
+        raise FileNotFoundError(f"No manifest found matching crosswalk {crosswalk_path}")
+    return max(matching, key=lambda x: x[0].stat().st_mtime)[1]["run_id"]
 
 
 def _load_stage_df(run_id: str, stage: str) -> pd.DataFrame:
@@ -400,23 +411,24 @@ def _load_stage_df(run_id: str, stage: str) -> pd.DataFrame:
 
 
 def build_overload_examples() -> pd.DataFrame:
+    # pipeline.py's STAGES is now just (S1_RETRIEVE, S2_TASK_FILTER) - S2 is the final
+    # output (an older 5-stage architecture, with a separate overload-control S4 and
+    # final S5 stage, was consolidated into this 2-stage form at some point; the
+    # per-run-id S3/S4/S5 prediction dumps this function used to read no longer exist).
+    # `tasks_s3` is kept as the column name only for backward compatibility with
+    # export_latex.py's `_overload_tex()`, which reads it as "tasks in the final output" -
+    # that was always its actual meaning despite the stage-3 name.
     rows: list[pd.DataFrame] = []
     for dataset_id, meta in DATASETS.items():
         run_id = _get_run_id_from_crosswalk(meta["crosswalk_path"])
-        s3 = _load_stage_df(run_id, "S3_COVERAGE")
-        s4 = _load_stage_df(run_id, "S4_OVERLOAD")
-        s5 = _load_stage_df(run_id, "S5_FINAL")
-        c3 = s3.groupby("iscoGroup", as_index=False).agg(tasks_s3=("task_id", "nunique"))
-        c4 = s4.groupby("iscoGroup", as_index=False).agg(tasks_s4=("task_id", "nunique"))
-        c5 = s5.groupby("iscoGroup", as_index=False).agg(tasks_s5=("task_id", "nunique"))
+        final = _load_stage_df(run_id, "S2_TASK_FILTER")
+        counts = final.groupby("iscoGroup", as_index=False).agg(tasks_s3=("task_id", "nunique"))
         labels = (
-            s3.assign(isco_title=s3["isco_title"].astype(str).str.split("|").str[0])
+            final.assign(isco_title=final["isco_title"].astype(str).str.split("|").str[0])
             .groupby("iscoGroup", as_index=False)["isco_title"]
             .first()
         )
-        out = c3.merge(c4, on="iscoGroup", how="left").merge(c5, on="iscoGroup", how="left").merge(labels, on="iscoGroup", how="left")
-        out = out.fillna(0)
-        out["pruned_in_s4"] = out["tasks_s3"] - out["tasks_s4"]
+        out = counts.merge(labels, on="iscoGroup", how="left")
         out["dataset_id"] = dataset_id
         out["dataset_short"] = meta["short"]
         out["run_id"] = run_id
@@ -427,7 +439,7 @@ def build_overload_examples() -> pd.DataFrame:
 
 def build_stage_task_examples() -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
-    stage_order = ["S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE", "S4_OVERLOAD", "S5_FINAL"]
+    stage_order = ["S1_RETRIEVE", "S2_TASK_FILTER"]  # pipeline.py's actual current STAGES
     for dataset_id, meta in DATASETS.items():
         run_id = _get_run_id_from_crosswalk(meta["crosswalk_path"])
         s1 = _load_stage_df(run_id, "S1_RETRIEVE")
