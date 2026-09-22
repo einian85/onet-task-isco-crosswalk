@@ -58,13 +58,17 @@ except Exception as e:
     print(f"\n[4] DWA count: error — {e}")
 
 # ── 4. O*NET version count ───────────────────────────────────────────────────
+# Anchored at the end (\.yaml$) so this only matches plain per-release configs
+# like config_onet292.yaml, not config_onet292_abl_no_dwa.yaml / _bge.yaml / _gte.yaml -
+# an unanchored version of this regex previously matched those too (m stayed None,
+# silently producing a bogus "v0.0" entry per file and inflating the count by 6).
 configs_dir = BASE / 'configs'
-onet_configs = sorted(configs_dir.glob('config_onet*.yaml'))
+_ver_re = re.compile(r'config_onet(\d+)\.yaml$')
+onet_configs = sorted(p for p in configs_dir.glob('config_onet*.yaml') if _ver_re.search(p.name))
 print(f"\n[5] O*NET version configs found:  {len(onet_configs)}")
 if onet_configs:
     def ver_tuple(p):
-        m = re.search(r'config_onet(\d+)\.yaml', p.name)
-        digits = m.group(1) if m else ''
+        digits = _ver_re.search(p.name).group(1)
         if len(digits) == 2: return (int(digits[0]), int(digits[1]))
         if len(digits) == 3: return (int(digits[:2]), int(digits[2]))
         if len(digits) == 4: return (int(digits[:2]), int(digits[2:]))
