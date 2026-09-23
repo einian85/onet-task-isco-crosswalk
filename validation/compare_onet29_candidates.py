@@ -38,6 +38,11 @@ from shared import (
     load_soc18_crosswalks,
     summarise_match,
 )
+from evaluate_annotations_phase_d import (
+    RETEST_KEY_PATH,
+    load_workbook as _load_expanded_workbook,
+    split_official_and_retest,
+)
 
 matplotlib.use("Agg")
 
@@ -319,14 +324,22 @@ def build_chain_tables(candidate_outputs: pd.DataFrame) -> tuple[pd.DataFrame, p
 
 
 def _load_filled_human_workbook() -> pd.DataFrame:
-    path = GT_RESULTS_DIR / "annotation_workbook_onet29.xlsx"
-    df = pd.read_excel(path, sheet_name="Validation", dtype=str)
-    df.columns = df.columns.str.strip()
-    df["expert_isco"] = df["expert_isco"].fillna("").str.strip()
-    df = df[df["expert_isco"] != ""].copy()
-    df["task_id"] = pd.to_numeric(df["task_id"], errors="coerce").astype("Int64")
-    df["expert_isco_int"] = pd.to_numeric(df["expert_isco"], errors="coerce").astype("Int64")
-    return df
+    """Return the official n=180 annotation set only.
+
+    The workbook has 200 filled rows: 180 official judgments (the basis for every
+    human-eval figure in the paper) plus 20 blind test-retest re-judgments of
+    task_ids that already have an official answer. Reading all 200 rows naively
+    double-counts those 20 tasks (bug found 2026-09-23, confirmed by the user: the
+    correct n is 180, not 200) -- this reuses the same official/retest split
+    evaluate_annotations_phase_d.py uses for the authoritative n=180 summary, so
+    this comparison table and that summary can never silently disagree again.
+    """
+    df = _load_expanded_workbook()
+    retest_key = pd.read_csv(RETEST_KEY_PATH, dtype={"task_id": "Int64"})
+    official_180, _retest_rejudged = split_official_and_retest(df, retest_key)
+    official_180["expert_isco"] = official_180["expert_isco"].fillna("").astype(str).str.strip()
+    official_180 = official_180[official_180["expert_isco"] != ""].copy()
+    return official_180
 
 
 def _match_flags(expert: pd.Series, pred: pd.Series) -> tuple[pd.Series, pd.Series, pd.Series]:
