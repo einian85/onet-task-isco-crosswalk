@@ -380,17 +380,40 @@ def _write_tex_table(df: pd.DataFrame, path: Path, float_formatters: dict[str, s
 
 
 def _load_unsupervised_metrics(labels: list[str]) -> pd.DataFrame:
-    """Pull unsupervised composite metrics from the sweep summary CSV."""
-    summary_path = PROJECT_DIR / "results" / "summary" / "sweep_results_metrics_only.csv"
-    if not summary_path.exists():
+    """Pull unsupervised composite metrics for the shortlisted candidates.
+
+    NOTE: these candidates (jf_*, fg_*, sw_*) come from the phase-6 local
+    refinement and the corrected systematic sweep's round-6 optimum -- they were
+    materialized directly via ensure_candidate_outputs(), not through the sweep
+    engine, so they never appear in results/summary/sweep_results_metrics_only.csv
+    (whose dataset_name column holds systematic-sweep run-ids like
+    "r3_s250_d125_i50_t81_o12", a different id space entirely). The correct,
+    already-built source for these candidates' unsupervised metrics is
+    validation/results/candidate_sweep_scores.csv, produced by
+    validation/score_candidates.py against the paper's own raw sweep_score
+    formula. (Bug found 2026-09-23: this function previously joined against
+    sweep_results_metrics_only.csv, which matches none of these labels, silently
+    producing an all-NaN table_candidate_selection_unsupervised.tex.)
+    """
+    scores_path = PROJECT_DIR / "validation" / "results" / "candidate_sweep_scores.csv"
+    if not scores_path.exists():
         return pd.DataFrame()
-    df = pd.read_csv(summary_path)
+    df = pd.read_csv(scores_path)
+    df = df.sort_values("sweep_score", ascending=False).reset_index(drop=True)
+    df["selection_rank"] = df.index + 1
+    df = df.rename(columns={
+        "candidate_label": "dataset_name",
+        "sweep_score": "selection_score",
+        "coverage": "S5_FINAL_isco_coverage_share",
+        "mean_sim": "S5_FINAL_mean_similarity_retained",
+        "overload_share": "S5_FINAL_share_tasks_in_overloaded_isco",
+        "gini": "S5_FINAL_isco_gini",
+    })
     wanted = [
         "dataset_name", "selection_rank", "selection_score",
         "S5_FINAL_isco_coverage_share", "S5_FINAL_mean_similarity_retained",
         "S5_FINAL_share_tasks_in_overloaded_isco",
-        "S5_FINAL_isco_gini", "S5_FINAL_best_link_agreement",
-        "S5_FINAL_jaccard_macro",
+        "S5_FINAL_isco_gini",
     ]
     avail = [c for c in wanted if c in df.columns]
     sub = df[df["dataset_name"].isin(labels)][avail].drop_duplicates("dataset_name")

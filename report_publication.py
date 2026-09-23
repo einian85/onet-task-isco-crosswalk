@@ -255,7 +255,17 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
         "S5_FINAL_mean_links_per_task",
         "S5_FINAL_gini_tasks_per_isco",
     ]
-    top_table = df[top_cols].sort_values(["selection_rank", "run_id"]).head(12).reset_index(drop=True)
+    # drop_duplicates on the *displayed* description, not run_id: two distinct sweep
+    # candidates can differ only in an unshown parameter and round to an identical
+    # changed_param/changed_value description, which otherwise prints as a visually
+    # duplicated row (found 2026-09-23, table_sweep_top_configs.tex rank 3).
+    top_table = (
+        df[top_cols]
+        .sort_values(["selection_rank", "run_id"])
+        .drop_duplicates(subset=["changed_param", "changed_value"], keep="first")
+        .head(12)
+        .reset_index(drop=True)
+    )
 
     per_param_rows = []
     for param in sorted(set(df["changed_param"]) - {"baseline", "multiple"}):
