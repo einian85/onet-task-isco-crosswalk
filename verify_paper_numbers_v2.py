@@ -180,3 +180,125 @@ print(f"  w_isco_task: {cfg.get('w_isco_task')}")
 print(f"  w_occ:       {cfg.get('w_occ')}")
 
 print(f"\nO*NET versions covered: {len(onet_configs)}")
+
+# ── 11. Multi-release aggregate ranges (SOC2018 / SOC2010 eras) ─────────────
+# These are the ranges cited in the abstract/introduction/conclusion ("across
+# all N releases, tasks range from X to Y..."); added 2026-09-23 because they
+# previously existed only as one-off calculations, not as reusable script
+# output -- everything cited in the paper should be reproducible from this repo.
+SOC2018_VERSIONS = ['251','252','253','260','261','262','263','270','271','272',
+                     '273','280','281','282','283','290','291','292','293','300',
+                     '301','302','303']
+SOC2010_VERSIONS = ['151','160','170','180','181','190','200','201','202','203',
+                     '210','211','212','213','220','221','222','223','230','231',
+                     '232','233','240','241','242','243','250']
+
+def era_ranges(versions, label):
+    n_tasks, n_groups, sims = [], [], []
+    for v in versions:
+        f = BASE / 'output' / f'ONET{v}_task_to_ISCO_crosswalk.csv'
+        if not f.exists():
+            continue
+        df = pd.read_csv(f)
+        best = df[df['is_best'] == True]
+        n_tasks.append(len(best))
+        n_groups.append(best['iscoGroup'].nunique())
+        sims.append(best['similarity'].mean())
+    return {
+        'era': label, 'n_releases': len(n_tasks),
+        'tasks_min': min(n_tasks), 'tasks_max': max(n_tasks),
+        'isco_groups_min': min(n_groups), 'isco_groups_max': max(n_groups),
+        'mean_sim_min': round(min(sims), 3), 'mean_sim_max': round(max(sims), 3),
+    }
+
+def era_chain_ranges(versions, label):
+    exacts, majors = [], []
+    for v in versions:
+        f = BASE / 'validation' / 'results' / f'chain_eval_onet{v}_overall.csv'
+        if not f.exists():
+            continue
+        df = pd.read_csv(f)
+        row = df[df['label'].str.contains('Lenient union', na=False)]
+        if row.empty:
+            continue
+        exacts.append(row['pct_exact'].values[0])
+        majors.append(row['pct_major_group'].values[0])
+    return {
+        'era': label, 'n_releases': len(exacts),
+        'exact_min': min(exacts), 'exact_max': max(exacts),
+        'major_min': min(majors), 'major_max': max(majors),
+    }
+
+range_rows = [era_ranges(SOC2018_VERSIONS, 'SOC2018'), era_ranges(SOC2010_VERSIONS, 'SOC2010')]
+chain_range_rows = [era_chain_ranges(SOC2018_VERSIONS, 'SOC2018'), era_chain_ranges(SOC2010_VERSIONS, 'SOC2010')]
+
+print(f"\n[13] Multi-release aggregate ranges (for abstract/introduction/conclusion):")
+for r in range_rows:
+    print(f"     {r['era']} (n={r['n_releases']} releases): "
+          f"tasks {r['tasks_min']:,}-{r['tasks_max']:,}, "
+          f"ISCO groups {r['isco_groups_min']}-{r['isco_groups_max']}, "
+          f"mean sim {r['mean_sim_min']}-{r['mean_sim_max']}")
+for r in chain_range_rows:
+    print(f"     {r['era']} chain-exact (A4 lenient union): {r['exact_min']}-{r['exact_max']}%, "
+          f"major-group: {r['major_min']}-{r['major_max']}%")
+
+out_dir = BASE / 'results' / 'summary'
+out_dir.mkdir(parents=True, exist_ok=True)
+pd.DataFrame(range_rows).to_csv(out_dir / 'paper_era_ranges.csv', index=False)
+pd.DataFrame(chain_range_rows).to_csv(out_dir / 'paper_era_chain_ranges.csv', index=False)
+print(f"     Written: results/summary/paper_era_ranges.csv, results/summary/paper_era_chain_ranges.csv")
+
+# ── 12. Wilson 95% CIs for the O*NET 29.2 headline figures ──────────────────
+import math
+def wilson_ci(pct, n, z=1.96):
+    p = pct / 100
+    denom = 1 + z**2 / n
+    center = p + z**2 / (2 * n)
+    margin = z * math.sqrt(p * (1 - p) / n + z**2 / (4 * n**2))
+    return round((center - margin) / denom * 100, 1), round((center + margin) / denom * 100, 1)
+
+wilson_rows = []
+for _, row in eval292.iterrows():
+    n = row['n_in_crosswalk']
+    for metric in ['pct_exact', 'pct_sub_major', 'pct_major_group']:
+        lo, hi = wilson_ci(row[metric], n)
+        wilson_rows.append({'release': 'ONET292', 'scenario': row['label'],
+                             'metric': metric, 'pct': row[metric], 'n': n,
+                             'ci_lo': lo, 'ci_hi': hi})
+
+print(f"\n[14] Wilson 95% CIs (O*NET 29.2):")
+for r in wilson_rows:
+    print(f"     {r['scenario']} {r['metric']}: {r['pct']}% [{r['ci_lo']}%, {r['ci_hi']}%] (n={r['n']:,})")
+
+pd.DataFrame(wilson_rows).to_csv(out_dir / 'paper_wilson_cis.csv', index=False)
+print(f"     Written: results/summary/paper_wilson_cis.csv")
+
+# ── 13. Effective query-side / target-side blend percentages ────────────────
+# The paper explains the selected weights in terms of their sequential-blend
+# effective shares (Appendix A "Selected configuration"); computed here once,
+# reusably, rather than by hand in the paper-writing process.
+w_dwa, w_soc = cfg['w_dwa'], cfg['w_soc_title']
+w_isco, w_isco_task, w_occ = cfg['w_isco'], cfg['w_isco_task'], cfg['w_occ']
+
+query_shares = {
+    'dwa_share': (1 - w_soc) * w_dwa,
+    'task_text_share': (1 - w_soc) * (1 - w_dwa),
+    'soc_title_share': w_soc,
+}
+target_shares = {
+    'isco_task_share': w_isco * w_isco_task,
+    'isco_info_share': w_isco * (1 - w_isco_task),
+    'esco_occ_share': (1 - w_isco) * w_occ,
+    'esco_skill_share': (1 - w_isco) * (1 - w_occ),
+}
+print(f"\n[15] Effective query-side shares (production config):")
+for k, v in query_shares.items():
+    print(f"     {k}: {v*100:.1f}%")
+print(f"     sum check: {sum(query_shares.values())*100:.1f}%")
+print(f"[15b] Effective target-side shares (production config):")
+for k, v in target_shares.items():
+    print(f"     {k}: {v*100:.1f}%")
+print(f"     sum check: {sum(target_shares.values())*100:.1f}%")
+
+pd.DataFrame([{**query_shares, **target_shares}]).to_csv(out_dir / 'paper_effective_weight_shares.csv', index=False)
+print(f"     Written: results/summary/paper_effective_weight_shares.csv")
