@@ -3,6 +3,7 @@ Verify facts #15, #50b, and #104 from the fact audit table.
 """
 import sys
 import pandas as pd
+sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, 'validation')
 from shared import load_soc18_crosswalks, load_onet_tasks, evaluate_match, summarise_match
 

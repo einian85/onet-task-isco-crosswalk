@@ -4,9 +4,12 @@ Computes every key quantity cited in the paper and supplementary.
 Run from the project root (conda env onet-isco-nlp):
     python verify_paper_numbers_v2.py
 """
+import sys
 import re
 import pandas as pd
 from pathlib import Path
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 BASE = Path(__file__).parent
 
