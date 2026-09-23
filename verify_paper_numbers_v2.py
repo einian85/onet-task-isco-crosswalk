@@ -258,17 +258,18 @@ def wilson_ci(pct, n, z=1.96):
     return round((center - margin) / denom * 100, 1), round((center + margin) / denom * 100, 1)
 
 wilson_rows = []
-for _, row in eval292.iterrows():
-    n = row['n_in_crosswalk']
-    for metric in ['pct_exact', 'pct_sub_major', 'pct_major_group']:
-        lo, hi = wilson_ci(row[metric], n)
-        wilson_rows.append({'release': 'ONET292', 'scenario': row['label'],
-                             'metric': metric, 'pct': row[metric], 'n': n,
-                             'ci_lo': lo, 'ci_hi': hi})
+for release_name, eval_df in [('ONET292', eval292), ('ONET250', eval250)]:
+    for _, row in eval_df.iterrows():
+        n = row['n_in_crosswalk']
+        for metric in ['pct_exact', 'pct_sub_major', 'pct_major_group']:
+            lo, hi = wilson_ci(row[metric], n)
+            wilson_rows.append({'release': release_name, 'scenario': row['label'],
+                                 'metric': metric, 'pct': row[metric], 'n': n,
+                                 'ci_lo': lo, 'ci_hi': hi})
 
-print(f"\n[14] Wilson 95% CIs (O*NET 29.2):")
+print(f"\n[14] Wilson 95% CIs (O*NET 29.2 = representative SOC2018; O*NET 25.0 = representative SOC2010):")
 for r in wilson_rows:
-    print(f"     {r['scenario']} {r['metric']}: {r['pct']}% [{r['ci_lo']}%, {r['ci_hi']}%] (n={r['n']:,})")
+    print(f"     {r['release']} {r['scenario']} {r['metric']}: {r['pct']}% [{r['ci_lo']}%, {r['ci_hi']}%] (n={r['n']:,})")
 
 pd.DataFrame(wilson_rows).to_csv(out_dir / 'paper_wilson_cis.csv', index=False)
 print(f"     Written: results/summary/paper_wilson_cis.csv")
