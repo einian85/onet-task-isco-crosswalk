@@ -302,3 +302,37 @@ print(f"     sum check: {sum(target_shares.values())*100:.1f}%")
 
 pd.DataFrame([{**query_shares, **target_shares}]).to_csv(out_dir / 'paper_effective_weight_shares.csv', index=False)
 print(f"     Written: results/summary/paper_effective_weight_shares.csv")
+
+# ── 14. Overloaded-group SOC-major-group concentration ───────────────────────
+# The paper claims overloaded ISCO groups are "structural, not a pipeline
+# problem" because each draws most of its tasks from one dominant SOC major
+# group. This claim previously had no script behind it (a hand-check from an
+# earlier session, per CONFIG_SELECTION_LOG.md) and the set of overloaded
+# groups changed under the corrected config (results/publication/tables/
+# table_overload_examples.tex now lists 8 groups for O*NET 29.2, not 2) -- so
+# it needs recomputing against the current output, not carried over by assumption.
+sys.path.insert(0, str(BASE / 'validation'))
+from shared import load_onet_tasks  # noqa: E402
+
+onet_tasks = load_onet_tasks("29.2")[['task_id', 'soc_code']]
+onet_tasks['soc_major'] = onet_tasks['soc_code'].str.slice(0, 2)
+best29_soc = best29.merge(onet_tasks, on='task_id', how='left')
+
+counts_by_group = best29_soc.groupby('iscoGroup').size()
+threshold = max(200, counts_by_group.quantile(0.95))
+overloaded_groups = counts_by_group[counts_by_group > threshold].sort_values(ascending=False)
+
+print(f"\n[16] Overloaded-group SOC-major-group concentration (O*NET 29.2):")
+print(f"     Threshold T = max(200, Q95) = {threshold:.1f}; {len(overloaded_groups)} groups over threshold")
+concentration_rows = []
+for isco_group, n_tasks_grp in overloaded_groups.items():
+    sub = best29_soc[best29_soc['iscoGroup'] == isco_group]
+    major_counts = sub['soc_major'].value_counts()
+    top_major = major_counts.index[0]
+    top_share = major_counts.iloc[0] / len(sub) * 100
+    concentration_rows.append({'isco_group': isco_group, 'n_tasks': int(n_tasks_grp),
+                                'dominant_soc_major': top_major, 'dominant_soc_major_share_pct': round(top_share, 1)})
+    print(f"     ISCO {isco_group}: {n_tasks_grp} tasks, {top_share:.1f}% from SOC major group {top_major}")
+
+pd.DataFrame(concentration_rows).to_csv(out_dir / 'paper_overload_concentration.csv', index=False)
+print(f"     Written: results/summary/paper_overload_concentration.csv")
