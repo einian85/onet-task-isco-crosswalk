@@ -1,0 +1,4 @@
+metric,pct,ci_lo,ci_hi,n
+exact,33.3,26.9,40.5,180
+sub_major,56.1,48.8,63.2,180
+major_group,68.3,61.2,74.7,180

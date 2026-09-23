@@ -133,109 +133,114 @@ def xw_sanity_check(df: pd.DataFrame) -> dict[str, int | float | None]:
     return {"n_expert_isco": int(df["expert_isco_int"].notna().sum()), "pct_expert_in_xw": pct}
 
 
-print("\n== Evaluating: ONET29 annotations =========================================")
-df = load_filled_excel(VALIDATION_FILE)
-if df is None:
-    print("Nothing to evaluate. Fill in expert_isco column first.")
-    sys.exit(0)
+def main() -> None:
+    print("\n== Evaluating: ONET29 annotations =========================================")
+    df = load_filled_excel(VALIDATION_FILE)
+    if df is None:
+        print("Nothing to evaluate. Fill in expert_isco column first.")
+        sys.exit(0)
 
-variants = discover_variants()
-if not variants:
-    print("No ONET29 candidate crosswalk files found.")
-    sys.exit(0)
+    variants = discover_variants()
+    if not variants:
+        print("No ONET29 candidate crosswalk files found.")
+        sys.exit(0)
 
-rows = []
-primary_label = variants[0][0]
-for label, pipeline_path, desc in variants:
-    pipe = load_pipeline(pipeline_path)
-    if "candidate_rank" in pipe.columns:
-        pipe = pipe[pipe["candidate_rank"] == 1].copy()
-    pipe = pipe[["task_id", "isco_pred", "similarity"]]
+    rows = []
+    primary_label = variants[0][0]
+    for label, pipeline_path, desc in variants:
+        pipe = load_pipeline(pipeline_path)
+        if "candidate_rank" in pipe.columns:
+            pipe = pipe[pipe["candidate_rank"] == 1].copy()
+        pipe = pipe[["task_id", "isco_pred", "similarity"]]
 
-    task_ids = pd.to_numeric(df["task_id"], errors="coerce").astype("Int64")
-    merged = task_ids.to_frame("task_id").merge(pipe, on="task_id", how="left")
-    pred_isco = merged["isco_pred"].astype("Int64")
-    mean_sim = merged["similarity"].mean()
+        task_ids = pd.to_numeric(df["task_id"], errors="coerce").astype("Int64")
+        merged = task_ids.to_frame("task_id").merge(pipe, on="task_id", how="left")
+        pred_isco = merged["isco_pred"].astype("Int64")
+        mean_sim = merged["similarity"].mean()
 
-    exact, sub_major, major_grp = match_flags(df["expert_isco_int"], pred_isco)
-    n = int(exact.notna().sum())
+        exact, sub_major, major_grp = match_flags(df["expert_isco_int"], pred_isco)
+        n = int(exact.notna().sum())
 
-    rows.append(
-        {
-            "label": label,
-            "description": desc,
-            "n_judged": n,
-            "pct_exact": round(exact.astype(float).mean() * 100, 1),
-            "pct_sub_major": round(sub_major.astype(float).mean() * 100, 1),
-            "pct_major_group": round(major_grp.astype(float).mean() * 100, 1),
-            "mean_similarity": round(mean_sim, 3) if pd.notna(mean_sim) else None,
-        }
-    )
-
-    if label == primary_label:
-        df[f"match_exact_{label}"] = exact
-        df[f"match_sub_major_{label}"] = sub_major
-        df[f"match_major_group_{label}"] = major_grp
-
-summary = pd.DataFrame(rows)
-
-print("\n--- Precision by variant --------------------------------------------------")
-print(
-    summary[
-        ["label", "n_judged", "pct_exact", "pct_sub_major", "pct_major_group", "mean_similarity"]
-    ].to_string(index=False)
-)
-
-xw = xw_sanity_check(df)
-print("\n--- Expert ISCO crosswalk sanity ------------------------------------------")
-print(f"  {xw['n_expert_isco']} expert ISCOs; {xw['pct_expert_in_xw']}% within crosswalk-acceptable set")
-
-primary_match_col = f"match_exact_{primary_label}"
-if primary_match_col in df.columns:
-    df["expert_major_group"] = (df["expert_isco_int"].astype("Int64") // 1000).astype("Int64")
-    by_major = (
-        df.groupby("expert_major_group", observed=True)
-        .agg(
-            n=(primary_match_col, "count"),
-            pct_exact=(primary_match_col, lambda x: round(x.astype(float).mean() * 100, 1)),
+        rows.append(
+            {
+                "label": label,
+                "description": desc,
+                "n_judged": n,
+                "pct_exact": round(exact.astype(float).mean() * 100, 1),
+                "pct_sub_major": round(sub_major.astype(float).mean() * 100, 1),
+                "pct_major_group": round(major_grp.astype(float).mean() * 100, 1),
+                "mean_similarity": round(mean_sim, 3) if pd.notna(mean_sim) else None,
+            }
         )
-        .reset_index()
-        .sort_values("expert_major_group")
+
+        if label == primary_label:
+            df[f"match_exact_{label}"] = exact
+            df[f"match_sub_major_{label}"] = sub_major
+            df[f"match_major_group_{label}"] = major_grp
+
+    summary = pd.DataFrame(rows)
+
+    print("\n--- Precision by variant --------------------------------------------------")
+    print(
+        summary[
+            ["label", "n_judged", "pct_exact", "pct_sub_major", "pct_major_group", "mean_similarity"]
+        ].to_string(index=False)
     )
-    print(f"\n--- {primary_label} exact match by ISCO major group ------------------------")
-    print(by_major.to_string(index=False))
 
-detail_path = GT_RESULTS_DIR / "human_eval_onet29.csv"
-summary_path = GT_RESULTS_DIR / "human_eval_onet29_summary.csv"
-df.to_csv(detail_path, index=False)
-summary.to_csv(summary_path, index=False)
-print(f"\n  Detail:  {detail_path}")
-print(f"  Summary: {summary_path}")
+    xw = xw_sanity_check(df)
+    print("\n--- Expert ISCO crosswalk sanity ------------------------------------------")
+    print(f"  {xw['n_expert_isco']} expert ISCOs; {xw['pct_expert_in_xw']}% within crosswalk-acceptable set")
 
-fig, ax = plt.subplots(figsize=(9, 5))
-x = range(len(summary))
-width = 0.25
-ax.bar([i - width for i in x], summary["pct_exact"], width, label="Exact (4-digit)", color="C0")
-ax.bar([i for i in x], summary["pct_sub_major"], width, label="Sub-major (2-digit)", color="C1")
-ax.bar([i + width for i in x], summary["pct_major_group"], width, label="Major group (1-digit)", color="C2")
-for i, row in summary.iterrows():
-    ax.text(i - width, row["pct_exact"] + 1.5, f"{row['pct_exact']:.1f}", ha="center", fontsize=8, color="C0")
-ax.set_xticks(list(x))
-ax.set_xticklabels(summary["label"], rotation=15, ha="right", fontsize=10)
-ax.set_ylabel("Match rate (%)", fontsize=11)
-ax.set_title(
-    "ONET29: expert annotation agreement by available candidate crosswalk\n"
-    f"(n={len(df)} tasks; rank-1 prediction vs expert_isco)",
-    fontsize=11,
-)
-ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.0f%%"))
-ax.legend(fontsize=9)
-ax.grid(True, axis="y", alpha=0.3)
-ax.set_ylim(0, min(100, summary["pct_major_group"].max() + 12))
-plt.tight_layout()
-out_plot = GT_RESULTS_DIR / "human_eval_onet29_by_variant.png"
-fig.savefig(out_plot, dpi=150)
-plt.close(fig)
-print(f"  Plot:    {out_plot}")
+    primary_match_col = f"match_exact_{primary_label}"
+    if primary_match_col in df.columns:
+        df["expert_major_group"] = (df["expert_isco_int"].astype("Int64") // 1000).astype("Int64")
+        by_major = (
+            df.groupby("expert_major_group", observed=True)
+            .agg(
+                n=(primary_match_col, "count"),
+                pct_exact=(primary_match_col, lambda x: round(x.astype(float).mean() * 100, 1)),
+            )
+            .reset_index()
+            .sort_values("expert_major_group")
+        )
+        print(f"\n--- {primary_label} exact match by ISCO major group ------------------------")
+        print(by_major.to_string(index=False))
 
-print("\nDone.")
+    detail_path = GT_RESULTS_DIR / "human_eval_onet29.csv"
+    summary_path = GT_RESULTS_DIR / "human_eval_onet29_summary.csv"
+    df.to_csv(detail_path, index=False)
+    summary.to_csv(summary_path, index=False)
+    print(f"\n  Detail:  {detail_path}")
+    print(f"  Summary: {summary_path}")
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    x = range(len(summary))
+    width = 0.25
+    ax.bar([i - width for i in x], summary["pct_exact"], width, label="Exact (4-digit)", color="C0")
+    ax.bar([i for i in x], summary["pct_sub_major"], width, label="Sub-major (2-digit)", color="C1")
+    ax.bar([i + width for i in x], summary["pct_major_group"], width, label="Major group (1-digit)", color="C2")
+    for i, row in summary.iterrows():
+        ax.text(i - width, row["pct_exact"] + 1.5, f"{row['pct_exact']:.1f}", ha="center", fontsize=8, color="C0")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(summary["label"], rotation=15, ha="right", fontsize=10)
+    ax.set_ylabel("Match rate (%)", fontsize=11)
+    ax.set_title(
+        "ONET29: expert annotation agreement by available candidate crosswalk\n"
+        f"(n={len(df)} tasks; rank-1 prediction vs expert_isco)",
+        fontsize=11,
+    )
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.0f%%"))
+    ax.legend(fontsize=9)
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.set_ylim(0, min(100, summary["pct_major_group"].max() + 12))
+    plt.tight_layout()
+    out_plot = GT_RESULTS_DIR / "human_eval_onet29_by_variant.png"
+    fig.savefig(out_plot, dpi=150)
+    plt.close(fig)
+    print(f"  Plot:    {out_plot}")
+
+    print("\nDone.")
+
+
+if __name__ == "__main__":
+    main()
