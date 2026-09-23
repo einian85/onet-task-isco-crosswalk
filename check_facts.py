@@ -14,10 +14,11 @@ print(f"Fact #15 — ONET 25.0 task count: {df250['task_id'].nunique()}")
 dwa = pd.read_excel('data/onet/29_2/Tasks to DWAs.xlsx')
 print(f"Fact #50b — Unique DWA titles: {dwa['DWA Title'].nunique()}")
 
-# ── Fact #104: chain-crosswalk A4 on annotation subset (108 tasks) ───────────
+# ── Fact #104: chain-crosswalk A4 on annotation subset (180 unique tasks as of Phase D;
+#    workbook has 200 rows including 20 blind test-retest duplicates, deduplicated below) ──
 print("\nFact #104 — chain-crosswalk A4 agreement on annotation subset:")
 
-# Load annotation workbook — get the 108 task IDs
+# Load annotation workbook — get the unique task IDs
 ann = pd.read_excel('validation/results/annotation_workbook_onet29.xlsx')
 ann_task_ids = pd.to_numeric(ann['task_id'], errors='coerce').dropna().astype('Int64')
 print(f"  Annotation task count: {len(ann_task_ids)}")
