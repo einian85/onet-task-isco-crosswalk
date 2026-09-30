@@ -14,15 +14,15 @@ onet_release: db_29_2_excel
 esco_release: ESCO_en
 random_seed: 42
 include_soc_title: true
-w_soc_title: 0.375
+w_soc_title: 0.2344
 w_dwa: 0.0
 include_esco_skills: true
 isco_tasks_path: data/isco/ISCO-08 EN Structure and definitions.xlsx
 embedding_model: all-mpnet-base-v2
 normalize_embeddings: true
-w_isco: 0.375
-w_isco_task: 0.7344
-w_occ: 0.1562
+w_isco: 0.4296
+w_isco_task: 0.961
+w_occ: 0.0157
 embedding_cache_dir: checkpoints
 faiss_index_type: FlatIP
 k_retrieve: 5
