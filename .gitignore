@@ -70,3 +70,4 @@ archive/
 
 # Working notes for the current revision cycle (not for publication)
 REVISION_TASKS_SJI.md
+/logs
