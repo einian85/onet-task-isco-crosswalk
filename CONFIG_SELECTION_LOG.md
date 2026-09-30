@@ -160,3 +160,88 @@ train/held-out-split redesign explicitly as its own piece of work.
 `REVISION_TASKS_SJI.md`. The disagreement audit should also continue — 6,010 cases is far more than
 was manually reviewed here, and the mix of genuine-signal vs. genuine-error cases isn't yet
 characterized well enough to describe in the paper.
+
+---
+
+## 2026-09-30 — second correction: `sw_s375_d266_i38_t73_o16` was itself selected on stale metrics
+
+**What was wrong:** the 2026-09-21 "final decision" above is superseded. It was reached by recomputing
+`sweep_score` from `S5_FINAL_*` columns in `results/summary/sweep_results_metrics_only.csv` — but
+`pipeline.py`'s `STAGES` tuple has been `("S1_RETRIEVE", "S2_TASK_FILTER")` only since the "Simplify
+the pipeline." (`b6ae989`) and "dead code removal cleanup" (`310cda2`) commits, both from well before
+this whole investigation. `S2_TASK_FILTER` is the real final stage — `final_output_path` is written
+from it directly. `S3_COVERAGE`/`S4_OVERLOAD`/`S5_FINAL` do not exist anywhere in the current pipeline.
+
+Checked what the `S5_FINAL_*` columns in the sweep file actually were: for every one of the 16,000
+rows, `S1_RETRIEVE_isco_coverage_share == S3_COVERAGE_... == S4_OVERLOAD_... == S5_FINAL_...`,
+bit-identical. These are frozen copies of the S1 retrieval-stage metrics, not independently computed
+final-stage metrics — the sweep file predates the pipeline simplification and was never regenerated
+after it. `S2_TASK_FILTER_*`, the columns the corrected formula should have used, were sitting in the
+same file the whole time, genuinely distinct from S1, unused.
+
+**Consequence:** re-scoring the full sweep on `S2_TASK_FILTER_*` (the real final stage), `sw_s375_d266_i38_t73_o16`
+ranks **137th of 16,750**, not 1st. The true argmax under the corrected, pipeline-consistent formula is
+a different point in parameter space.
+
+**How this was caught:** not by a script — by a human-requested self-consistency re-read of the
+manuscript against its own tables, which surfaced a coverage figure (Table~sweep-top showing 99.8%
+uniformly) that didn't match Appendix A's prose (97.0%). Tracing that down to its root cause, rather
+than patching the table, found the stage-confusion bug above.
+
+**What was fixed (see the commits on `master` dated 2026-09-30 for the full diff):**
+- `sweep.py::_add_composite_score`, `sweep/run_systematic_sweep_onet29.py::_sweep_score` — now read
+  `S2_TASK_FILTER_*`, with the stage history documented inline so this doesn't get silently re-broken
+  by a future pipeline refactor.
+- `report_publication.py` (`STAGE_ORDER`, `build_sweep_tables`), `export_latex.py` (`STAGE_LABELS`,
+  every table-generation function reading stage-prefixed columns), `report_occupation.py`,
+  `verify_paper_numbers.py`, `validation/shared.py::load_pipeline`,
+  `validation/compare_onet29_candidates.py`, `validation/score_candidates.py`'s docstring,
+  `validation/reviewer_c3_objective_sensitivity.py`, `validation/validate_chain.py`,
+  `validation/audit_chain_disagreements.py`, and five debug scripts under `sweep/` (`_best_config.py`,
+  `_check_wisco.py`, `_sweep_stats.py`, `_trace_rounds.py`, `plot_sweep_params.py`) — every
+  `S3_COVERAGE`/`S4_OVERLOAD`/`S5_FINAL` reference repointed to `S2_TASK_FILTER`.
+- `generate_configs.py` — removed the `enforce_isco_coverage`/`coverage_backfill_strategy` default
+  keys; `pipeline.py` never implements them (confirmed by a repo-wide grep finding zero consumers),
+  so they were dead config that made it look like a backfill step existed when it didn't.
+- Two stale paths: `sweep/run_systematic_sweep_onet29.py`'s `BASE_CONFIG` and
+  `verify_paper_numbers.py` both pointed at a repo-root `config_onet292.yaml` that doesn't exist (the
+  real file is `configs/config_onet292.yaml`) — would have failed outright on the next fresh run.
+
+**Re-ran the full systematic sweep from scratch** under the corrected scoring (parallelized across 8
+worker processes this time — candidates within a round are independent, only round-to-round is
+sequential — cutting wall-clock time from an estimated ~33 hours to ~7.5; see `sweep/plot_sweep_params.py`
+and the `ProcessPoolExecutor` addition in `run_systematic_sweep_onet29.py`). Converged after 6 rounds,
+16,750 candidates total (round sizes 1250/3000/3125/3125/3125/3125 — round 3 differs from the original
+16,000-candidate run's 2,375 because the adaptive zoom took a genuinely different path under correct
+scoring from round 1 onward, not because of any remaining bug).
+
+**New final decision:** `sw_r6_s234_d203_i43_t96_o02`
+(`w_soc_title=0.2344, w_dwa=0.2030, w_isco=0.4296, w_isco_task=0.9610, w_occ=0.0157`) — selection score
+0.3887, final-stage coverage 98.9% (431/436). Same independence principle re-confirmed explicitly by
+the user when presented with the three options this reopened (keep pure unsupervised selection /
+revise the objective function itself / select via validation with a held-out split): **stay pure
+unsupervised** — there is no principled a priori rule for revising the objective now, and
+validation-informed selection is the exact circularity already rejected on 2026-09-21. Chain-exact
+drops further, from 68.0% to 53.7%; human-exact from 33.3% to 24.4%. Five nearby candidates
+(C1–C4, B0) again validate substantially better (80.7–82.1% chain-exact, 50.0–53.3% human-exact) and
+are again not adopted, for the same circularity reason as before — this is now the second time this
+project has independently arrived at "the unsupervised optimum validates worse than nearby
+alternatives, and that's not a reason to pick the alternative."
+
+**Downstream regeneration, all committed 2026-09-30:** `update_configs.py` rewritten to select
+directly from `results/summary/sweep_results_metrics_only.csv`'s `selection_score` rather than a
+hand-maintained shortlist; all 63 `configs/config_onet*.yaml` regenerated; all 63
+`output/*_task_to_ISCO_crosswalk.csv` regenerated via `run_all_versions.py --force`; ablation and
+embedding-comparison re-run; every `validation/results/*` file regenerated; sweep heatmap figures
+regenerated (they hadn't been touched since before the pipeline simplification and still showed the
+selected-configuration marker on stale data). The old `sw_s375_d266_i38_t73_o16` candidate was removed
+from `validation/compare_onet29_candidates.py`'s `CANDIDATES` entirely rather than kept as a labeled
+comparison row — it was never a principled candidate, only an artifact of this bug, and keeping it
+around read as more confusing than informative once removed from the paper's own narrative.
+
+**Lesson for next time:** a metrics file that predates a pipeline refactor can carry column names that
+look current but aren't. The tell here was two identically-named-seeming things (`S5_FINAL` stage,
+"final assignment") that had silently stopped being the same thing. Grepping for a stage name's
+existence in the *current* pipeline code, not just in the data file, would have caught this
+immediately — worth doing as a standing check before trusting any `results/summary/*.csv` file that
+wasn't generated in the current session.
