@@ -147,6 +147,7 @@ def write_latex_table(rows: list[dict], out_path: Path) -> None:
         r"Mean similarity is not directly comparable across models.}",
         r"\end{tabular}",
     ]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"\nLaTeX table written: {out_path}")
 

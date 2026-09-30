@@ -148,6 +148,7 @@ def write_latex(rows: list[dict], variants: list[dict], out_path: Path) -> None:
         r"All variants use identical threshold parameters ($\tau=0.45$, $\delta=0.03$).}",
         r"\end{tabular}",
     ]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"\nLaTeX table written: {out_path}")
 
