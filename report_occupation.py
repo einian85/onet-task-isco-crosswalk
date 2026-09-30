@@ -128,7 +128,7 @@ def _load_task_table(task_path: Path) -> pd.DataFrame:
 def load_implied_links(meta: dict[str, Any]) -> pd.DataFrame:
     pred = pd.read_csv(meta["crosswalk_path"])
     if "stage" in pred.columns:
-        pred = pred.loc[pred["stage"] == "S5_FINAL"].copy()
+        pred = pred.loc[pred["stage"] == "S2_TASK_FILTER"].copy()
     pred["isco_code"] = pred["iscoGroup"].map(normalize_isco)
     pred = pred.dropna(subset=["isco_code"])
 

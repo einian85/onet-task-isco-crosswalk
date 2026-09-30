@@ -165,7 +165,7 @@ for ver in SOC18_VERSIONS:
     pipeline_df = load_pipeline(pipeline_path_for_version(ver))
     task_soc    = load_onet_tasks(ver)
 
-    print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_df):,}")
+    print(f"  Pipeline tasks (S2_TASK_FILTER):  {len(pipeline_df):,}")
     print(f"  O*NET task→SOC rows:        {len(task_soc):,}")
 
     scenarios = [
@@ -210,7 +210,7 @@ for ver in SOC10_VERSIONS:
     pipeline_df = load_pipeline(pipeline_path_for_version(ver))
     task_soc    = load_onet_tasks(ver)
 
-    print(f"  Pipeline tasks (S5_FINAL):  {len(pipeline_df):,}")
+    print(f"  Pipeline tasks (S2_TASK_FILTER):  {len(pipeline_df):,}")
     print(f"  O*NET task→SOC rows:        {len(task_soc):,}")
 
     scenarios = [

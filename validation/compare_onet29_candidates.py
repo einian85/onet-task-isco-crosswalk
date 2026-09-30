@@ -63,12 +63,13 @@ DISPLAY_NAMES: dict[str, str] = {
     "jf_d030_s675_i75_t60_o60": "C3 ($w_\\text{isco}$=75\\%)",
     "jf_d050_s675_i75_t60_o60": "C4 ($w_\\text{dwa}$=5.0\\%, $w_\\text{isco}$=75\\%)",
     "fg_isco08_dwa00_soc65": "B0 ($w_\\text{dwa}$=0\\%, $w_\\text{soc}$=65.0\\%)",
-    # Selected: highest sweep_score, unsupervised, no validation input (2026-09-21).
-    "sw_s375_d266_i38_t73_o16": "S$^*$ ($w_\\text{dwa}$=26.6\\%, $w_\\text{soc}$=37.5\\%)",
+    # Selected: highest sweep_score over the full systematic sweep on the final pipeline stage
+    # (S2_TASK_FILTER); unsupervised, no validation input.
+    "sw_r6_s234_d203_i43_t96_o02": "S$^*$ ($w_\\text{dwa}$=20.3\\%, $w_\\text{soc}$=23.4\\%)",
 }
 
 CANDIDATES: list[dict[str, object]] = [
-    # ── Not selected (see sw_s375_d266_i38_t73_o16 below) — kept for comparison ─────────
+    # ── Not selected (see sw_r6_s234_d203_i43_t96_o02 below) — kept for comparison ───────
     {
         "label": "jf_d030_s675_i80_t60_o60",
         "description": "Not selected: joint fine-sweep candidate (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.60, w_occ=0.60)",
@@ -147,30 +148,24 @@ CANDIDATES: list[dict[str, object]] = [
         },
     },
     # ── True systematic-sweep optimum (round-6 convergence, re-derived 2026-09) ────────
-    # The genuine round-by-round adaptive-zoom sweep (6 rounds, 16,000 candidates,
-    # results/summary/sweep_results_metrics_only.csv) converges here when re-scored with
-    # the paper's own raw sweep_score formula per round. These are also the weights that
-    # were in configs/config_onet292.yaml before commit 1d3ac47 ("Correct config weights",
-    # 2026-06-23) overwrote them with the current 0.675/0.030/0.80/0.60/0.60 values for
-    # reasons that are no longer documented or recalled. Included here to validate against
-    # ground truth before deciding whether it should replace the current production config.
+    # The genuine round-by-round adaptive-zoom sweep (6 rounds, ~16,750 candidates,
+    # results/summary/sweep_results_metrics_only.csv), scored on the real final pipeline
+    # stage (S2_TASK_FILTER). Selection is independent of validation.
     {
-        "label": "sw_s375_d266_i38_t73_o16",
-        "description": "Selected: true systematic-sweep round-6 optimum, chosen by sweep_score alone, independent of validation (w_dwa=0.2656, w_soc=0.375, w_isco=0.375, w_isco_task=0.7344, w_occ=0.1562)",
+        "label": "sw_r6_s234_d203_i43_t96_o02",
+        "description": "Selected: argmax of sweep_score over the full systematic sweep (final-stage metrics), independent of validation (w_dwa=0.2030, w_soc=0.2344, w_isco=0.4296, w_isco_task=0.9610, w_occ=0.0157)",
         "overrides": {
-            "w_isco": 0.375,
-            "w_dwa": 0.2656,
-            "w_soc_title": 0.375,
-            "w_occ": 0.1562,
-            "w_isco_task": 0.7344,
+            "w_isco": 0.4296,
+            "w_dwa": 0.2030,
+            "w_soc_title": 0.2344,
+            "w_occ": 0.0157,
+            "w_isco_task": 0.9610,
             "min_sim": 0.45,
             "margin_best": 0.03,
             "max_links_per_task": 1,
             "k_retrieve": 5,
             "overload_abs": 200,
             "overload_quantile": 0.95,
-            "overload_min_sim": 0.55,
-            "overload_margin_best": 0.02,
         },
     },
     # ── Baseline: no DWA ────────────────────────────────────────────────────────────────
@@ -417,16 +412,16 @@ def _load_unsupervised_metrics(labels: list[str]) -> pd.DataFrame:
     df = df.rename(columns={
         "candidate_label": "dataset_name",
         "sweep_score": "selection_score",
-        "coverage": "S5_FINAL_isco_coverage_share",
-        "mean_sim": "S5_FINAL_mean_similarity_retained",
-        "overload_share": "S5_FINAL_share_tasks_in_overloaded_isco",
-        "gini": "S5_FINAL_isco_gini",
+        "coverage": "S2_TASK_FILTER_isco_coverage_share",
+        "mean_sim": "S2_TASK_FILTER_mean_similarity_retained",
+        "overload_share": "S2_TASK_FILTER_share_tasks_in_overloaded_isco",
+        "gini": "S2_TASK_FILTER_isco_gini",
     })
     wanted = [
         "dataset_name", "selection_rank", "selection_score",
-        "S5_FINAL_isco_coverage_share", "S5_FINAL_mean_similarity_retained",
-        "S5_FINAL_share_tasks_in_overloaded_isco",
-        "S5_FINAL_isco_gini",
+        "S2_TASK_FILTER_isco_coverage_share", "S2_TASK_FILTER_mean_similarity_retained",
+        "S2_TASK_FILTER_share_tasks_in_overloaded_isco",
+        "S2_TASK_FILTER_isco_gini",
     ]
     avail = [c for c in wanted if c in df.columns]
     sub = df[df["dataset_name"].isin(labels)][avail].drop_duplicates("dataset_name")
@@ -439,7 +434,7 @@ def export_publication_artifacts(
     candidates: list[dict[str, object]],
 ) -> None:
     params = _candidate_parameter_table(candidates)
-    selected = "sw_s375_d266_i38_t73_o16"
+    selected = "sw_r6_s234_d203_i43_t96_o02"
     def _apply_display(series: pd.Series) -> pd.Series:
         return series.map(lambda s: DISPLAY_NAMES.get(s, s))
 
@@ -525,12 +520,12 @@ def export_publication_artifacts(
             "dataset_name": "Candidate",
             "selection_rank": "Rank",
             "selection_score": "Score",
-            "S5_FINAL_isco_coverage_share": "Coverage",
-            "S5_FINAL_mean_similarity_retained": "Mean sim.",
-            "S5_FINAL_share_tasks_in_overloaded_isco": "Overload",
-            "S5_FINAL_isco_gini": "Gini",
-            "S5_FINAL_best_link_agreement": "Best-link agr.",
-            "S5_FINAL_jaccard_macro": "Jaccard",
+            "S2_TASK_FILTER_isco_coverage_share": "Coverage",
+            "S2_TASK_FILTER_mean_similarity_retained": "Mean sim.",
+            "S2_TASK_FILTER_share_tasks_in_overloaded_isco": "Overload",
+            "S2_TASK_FILTER_isco_gini": "Gini",
+            "S2_TASK_FILTER_best_link_agreement": "Best-link agr.",
+            "S2_TASK_FILTER_jaccard_macro": "Jaccard",
         })
         unsup_table["Candidate"] = _apply_display(unsup_table["Candidate"])
         unsup_table["Candidate"] = _bold_selected(unsup_table["Candidate"], selected_display)

@@ -31,10 +31,10 @@ ALL_PARAMS = ["w_soc_title", "w_dwa", "w_isco", "w_isco_task", "w_occ"]
 df[ALL_PARAMS] = df[ALL_PARAMS].round(4)
 
 def _sweep_score(row) -> float:
-    cov      = float(row.get("S5_FINAL_isco_coverage_share") or 0)
-    sim      = float(row.get("S5_FINAL_mean_similarity_retained") or 0)
-    overload = float(row.get("S5_FINAL_share_tasks_in_overloaded_isco") or 0)
-    gini     = float(row.get("S5_FINAL_gini_tasks_per_isco") or 0)
+    cov      = float(row.get("S2_TASK_FILTER_isco_coverage_share") or 0)
+    sim      = float(row.get("S2_TASK_FILTER_mean_similarity_retained") or 0)
+    overload = float(row.get("S2_TASK_FILTER_share_tasks_in_overloaded_isco") or 0)
+    gini     = float(row.get("S2_TASK_FILTER_gini_tasks_per_isco") or 0)
     return (3*cov + 2*sim - 2*overload - 2*gini) / 9
 
 df["sweep_score"] = df.apply(_sweep_score, axis=1)

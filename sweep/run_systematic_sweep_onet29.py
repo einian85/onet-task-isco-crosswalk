@@ -32,13 +32,23 @@ import contextlib
 import gc
 import io
 import itertools
+import os
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+# Parallel candidate evaluation: candidates within a round are independent (only
+# round-to-round is sequential, since each round's grid depends on the previous
+# round's best result), so we evaluate a round's candidates across a process pool.
+# Leaves headroom on a 12-core/16-thread machine. Each worker sets its own BLAS/OMP
+# thread count to 1 to avoid oversubscription (N processes x each also spawning its
+# own internal thread pool would contend against itself).
+MAX_WORKERS = 8
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if hasattr(sys.stdout, "reconfigure"):
@@ -50,7 +60,7 @@ from pipeline import run_pipeline
 from sweep import _add_composite_score, _add_pareto_flag, _flatten_config
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_CONFIG  = str(ROOT_DIR / "config_onet292.yaml")
+BASE_CONFIG  = str(ROOT_DIR / "configs" / "config_onet292.yaml")
 SUMMARY_DIR  = ROOT_DIR / "results" / "summary"
 SUMMARY_PATH = SUMMARY_DIR / "sweep_results_metrics_only.csv"
 SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
@@ -79,10 +89,10 @@ PARAM_BOUNDS = {
 # across rounds. Used for both finding the best config and convergence.
 
 def _sweep_score(row) -> float:
-    cov      = float(row.get("S5_FINAL_isco_coverage_share") or 0)
-    sim      = float(row.get("S5_FINAL_mean_similarity_retained") or 0)
-    overload = float(row.get("S5_FINAL_share_tasks_in_overloaded_isco") or 0)
-    gini     = float(row.get("S5_FINAL_gini_tasks_per_isco") or 0)
+    cov      = float(row.get("S2_TASK_FILTER_isco_coverage_share") or 0)
+    sim      = float(row.get("S2_TASK_FILTER_mean_similarity_retained") or 0)
+    overload = float(row.get("S2_TASK_FILTER_share_tasks_in_overloaded_isco") or 0)
+    gini     = float(row.get("S2_TASK_FILTER_gini_tasks_per_isco") or 0)
     return (3*cov + 2*sim - 2*overload - 2*gini) / 9
 
 
@@ -287,10 +297,33 @@ def _merge_into_summary(new_rows: list[dict]) -> pd.DataFrame:
     return combined
 
 
+def _worker_init() -> None:
+    """Pool initializer: cap each worker's internal BLAS/OMP thread pool at 1 so
+    MAX_WORKERS processes don't each also try to multithread — oversubscription
+    would fight itself for the same cores. Must run before numpy/torch/faiss pick
+    up thread counts, so this only works reliably as a ProcessPoolExecutor
+    initializer (fresh process, nothing imported yet)."""
+    for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+        os.environ[var] = "1"
+
+
+def _run_one(cfg) -> tuple[str, dict | None, str | None]:
+    """Top-level, picklable worker body: run one candidate, return
+    (dataset_name, row_or_None, error_or_None). Never raises across the process
+    boundary — exceptions are caught and returned as a string instead."""
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            out = run_pipeline(cfg)
+        row = _make_row(out)
+        return (cfg.dataset_name, row, None)
+    except Exception as e:
+        return (cfg.dataset_name, None, f"{type(e).__name__}: {e}")
+
+
 def _run_phase(phase_label: str, configs: list) -> list[dict]:
     """
-    Run all configs not already done.  Shows a live progress bar with ETA.
-    Returns list of result rows (new + cached).
+    Run all configs not already done, in parallel across MAX_WORKERS processes.
+    Shows a live progress bar with ETA.  Returns list of result rows (new + cached).
     """
     todo  = [c for c in configs if not _is_done(c)]
     cache = [c for c in configs if _is_done(c)]
@@ -313,9 +346,12 @@ def _run_phase(phase_label: str, configs: list) -> list[dict]:
         return rows
 
     # ── Progress tracking ────────────────────────────────────────────────────
+    # Under a process pool, per-candidate wall time isn't meaningful on its own
+    # (N run concurrently) — ETA instead uses observed *throughput*
+    # (elapsed / n_done), which correctly reflects however many workers are
+    # actually active.
     n_total    = len(todo)
     n_done     = 0
-    times: list[float] = []          # per-config wall times
     phase_start = time.time()
 
     BAR_WIDTH  = 40
@@ -326,11 +362,11 @@ def _run_phase(phase_label: str, configs: list) -> list[dict]:
         filled  = int(BAR_WIDTH * frac)
         bar     = "█" * filled + "░" * (BAR_WIDTH - filled)
         elapsed = time.time() - phase_start
-        if times:
-            avg_t = sum(times) / len(times)
+        if current:
+            avg_t = elapsed / current
             eta   = avg_t * (total - current)
             eta_s = f"ETA {_fmt_time(eta)}"
-            speed = f"{avg_t:.1f}s/cfg"
+            speed = f"{avg_t:.1f}s/cfg avg ({MAX_WORKERS} workers)"
         else:
             eta_s = "ETA --"
             speed = ""
@@ -340,24 +376,22 @@ def _run_phase(phase_label: str, configs: list) -> list[dict]:
     _print_progress(0, n_total)
 
     try:
-        for cfg in todo:
-            t0  = time.time()
-            try:
-                with contextlib.redirect_stdout(io.StringIO()):
-                    out = run_pipeline(cfg)
-                t1 = time.time()
-                times.append(t1 - t0)
-                r = _make_row(out)
-                if r:
+        with ProcessPoolExecutor(max_workers=MAX_WORKERS, initializer=_worker_init) as pool:
+            futures = {pool.submit(_run_one, cfg): cfg for cfg in todo}
+            for fut in as_completed(futures):
+                cfg = futures[fut]
+                try:
+                    dataset_name, r, err = fut.result()
+                except Exception as e:  # the future itself failed (e.g. worker crashed)
+                    dataset_name, r, err = cfg.dataset_name, None, f"{type(e).__name__}: {e}"
+                if err:
+                    print(f"\n  [error] {dataset_name}: {err} — skipping", flush=True)
+                elif r:
                     rows.append(r)
-                del out
-            except Exception as e:
-                print(f"\n  [error] {cfg.dataset_name}: {type(e).__name__}: {e} — skipping", flush=True)
-            gc.collect()
-            n_done += 1
-            _print_progress(n_done, n_total)
-            if n_done % SAVE_EVERY == 0 and rows:
-                _merge_into_summary(rows)
+                n_done += 1
+                _print_progress(n_done, n_total)
+                if n_done % SAVE_EVERY == 0 and rows:
+                    _merge_into_summary(rows)
 
     except KeyboardInterrupt:
         print(f"\n  [Ctrl-C]  {n_done}/{n_total} completed — saving progress …")
@@ -503,10 +537,10 @@ def _round_summary(sub: pd.DataFrame, best_row: "pd.Series", grid: dict) -> None
         print(f"    {p} = {val:.4f}  [grid: {min(grid[p]):.4f}–{max(grid[p]):.4f}]{boundary}")
     print("  Score breakdown:")
     score_items = [
-        ("S5_FINAL_isco_coverage_share",            "coverage",  True),
-        ("S5_FINAL_mean_similarity_retained",       "similarity", True),
-        ("S5_FINAL_share_tasks_in_overloaded_isco", "overload",  False),
-        ("S5_FINAL_gini_tasks_per_isco",            "gini",      False),
+        ("S2_TASK_FILTER_isco_coverage_share",            "coverage",  True),
+        ("S2_TASK_FILTER_mean_similarity_retained",       "similarity", True),
+        ("S2_TASK_FILTER_share_tasks_in_overloaded_isco", "overload",  False),
+        ("S2_TASK_FILTER_gini_tasks_per_isco",            "gini",      False),
     ]
     for col, label, higher in score_items:
         val = best_row.get(col, float("nan"))
@@ -629,9 +663,9 @@ def main() -> None:
 
     cols  = ["dataset_name", "selection_rank", "selection_score",
              "w_soc_title", "w_dwa", "w_isco", "w_isco_task", "w_occ",
-             "S5_FINAL_isco_coverage_share",
-             "S5_FINAL_mean_similarity_retained",
-             "S5_FINAL_share_tasks_in_overloaded_isco"]
+             "S2_TASK_FILTER_isco_coverage_share",
+             "S2_TASK_FILTER_mean_similarity_retained",
+             "S2_TASK_FILTER_share_tasks_in_overloaded_isco"]
     avail = [c for c in cols if c in summary.columns]
     print(f"\n  Top 10 overall:")
     print(summary.head(10)[avail].to_string(index=False))

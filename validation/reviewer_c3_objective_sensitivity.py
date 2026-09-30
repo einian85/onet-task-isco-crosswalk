@@ -86,10 +86,10 @@ FORMULAS: dict[str, tuple[float, float, float, float]] = {
 def score(df: pd.DataFrame, weights: tuple[float, float, float, float]) -> pd.Series:
     wc, ws, wo, wg = weights
     denom = wc + ws + wo + wg
-    cov = df["S5_FINAL_isco_coverage_share"]
-    sim = df["S5_FINAL_mean_similarity_retained"]
-    overload = df["S5_FINAL_share_tasks_in_overloaded_isco"]
-    gini = df["S5_FINAL_gini_tasks_per_isco"]
+    cov = df["S2_TASK_FILTER_isco_coverage_share"]
+    sim = df["S2_TASK_FILTER_mean_similarity_retained"]
+    overload = df["S2_TASK_FILTER_share_tasks_in_overloaded_isco"]
+    gini = df["S2_TASK_FILTER_gini_tasks_per_isco"]
     return (wc * cov + ws * sim - wo * overload - wg * gini) / denom
 
 
@@ -139,10 +139,10 @@ def analyze_validated_shortlist() -> pd.DataFrame:
         label = r["candidate_label"]
         row_as_series = pd.Series(
             {
-                "S5_FINAL_isco_coverage_share": r["coverage"],
-                "S5_FINAL_mean_similarity_retained": r["mean_sim"],
-                "S5_FINAL_share_tasks_in_overloaded_isco": r["overload_share"],
-                "S5_FINAL_gini_tasks_per_isco": r["gini"],
+                "S2_TASK_FILTER_isco_coverage_share": r["coverage"],
+                "S2_TASK_FILTER_mean_similarity_retained": r["mean_sim"],
+                "S2_TASK_FILTER_share_tasks_in_overloaded_isco": r["overload_share"],
+                "S2_TASK_FILTER_gini_tasks_per_isco": r["gini"],
             }
         )
         entry = {"candidate_label": label}

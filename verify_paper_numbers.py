@@ -55,7 +55,7 @@ def read_yaml_simple(path):
                 result[k] = v
     return result
 
-cfg = read_yaml_simple(BASE / 'config_onet292.yaml')
+cfg = read_yaml_simple(BASE / 'configs' / 'config_onet292.yaml')
 print(f"\n[4] Production config (config_onet292.yaml):")
 print(f"    w_soc_title:  {cfg.get('w_soc_title')}  (SOC title weight in query)")
 print(f"    w_isco:       {cfg.get('w_isco')}   (ISCO task weight in target)")
@@ -64,9 +64,9 @@ print(f"    min_sim:      {cfg.get('min_sim')}")
 print(f"    margin_best:  {cfg.get('margin_best')}")
 print(f"    max_links_per_task: {cfg.get('max_links_per_task')}")
 
-# ── 4. ISCO-08 coverage (S5_FINAL stage = coverage-enforced output) ───────────
+# ── 4. ISCO-08 coverage (S2_TASK_FILTER = the real final stage) ───────────────
 cw29 = pd.read_csv(BASE / 'output/ONET29_task_to_ISCO_crosswalk.csv')
-cw29_best = cw29[cw29['stage'] == 'S5_FINAL'].copy()
+cw29_best = cw29[cw29['stage'] == 'S2_TASK_FILTER'].copy()
 cw29_best['iscoGroup'] = cw29_best['iscoGroup'].astype(str).str.zfill(4)
 assigned_groups = cw29_best['iscoGroup'].nunique()
 has_1113 = '1113' in cw29_best['iscoGroup'].values

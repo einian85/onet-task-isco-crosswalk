@@ -246,8 +246,8 @@ def pipeline_path_for_version(version: str) -> Path:
 
 
 
-# ── Load pipeline S5_FINAL output ────────────────────────────────────────────
-# Returns DataFrame with all S5_FINAL rows; renames iscoGroup → isco_pred.
+# ── Load pipeline S2_TASK_FILTER output (the real final stage) ────────────────
+# Returns DataFrame with all S2_TASK_FILTER rows; renames iscoGroup → isco_pred.
 
 def load_pipeline(pipeline_path: Path) -> pd.DataFrame:
     if not pipeline_path.exists():
@@ -256,7 +256,7 @@ def load_pipeline(pipeline_path: Path) -> pd.DataFrame:
         )
     df = pd.read_csv(pipeline_path)
     if "stage" in df.columns:
-        df = df[df["stage"] == "S5_FINAL"].copy()
+        df = df[df["stage"] == "S2_TASK_FILTER"].copy()
     if "iscoGroup" in df.columns:
         df = df.rename(columns={"iscoGroup": "isco_pred"})
     df["isco_pred"] = pd.to_numeric(df["isco_pred"], errors="coerce").astype("Int64")

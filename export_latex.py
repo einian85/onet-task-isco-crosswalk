@@ -29,8 +29,7 @@ DATASET_LABELS = {
 
 STAGE_LABELS = {
     "S1_RETRIEVE": "S1: Retrieve",
-    "S2_TASK_FILTER": "S2: Task filter",
-    "S3_COVERAGE": "S3: Coverage",
+    "S2_TASK_FILTER": "S2: Task filter (final)",
 }
 
 CROSSWALK_LABELS = {
@@ -93,9 +92,9 @@ def _sweep_top(df: pd.DataFrame) -> pd.DataFrame:
             "changed_param",
             "changed_value",
             "selection_score",
-            "S5_FINAL_isco_coverage_share",
-            "S5_FINAL_mean_similarity_retained",
-            "S5_FINAL_gini_tasks_per_isco",
+            "S2_TASK_FILTER_isco_coverage_share",
+            "S2_TASK_FILTER_mean_similarity_retained",
+            "S2_TASK_FILTER_gini_tasks_per_isco",
         ]
     ].copy()
     out = out.rename(
@@ -104,9 +103,9 @@ def _sweep_top(df: pd.DataFrame) -> pd.DataFrame:
             "changed_param": "Changed parameter",
             "changed_value": "Value",
             "selection_score": "Selection score",
-            "S5_FINAL_isco_coverage_share": "Coverage",
-            "S5_FINAL_mean_similarity_retained": "Mean similarity",
-            "S5_FINAL_gini_tasks_per_isco": "Gini",
+            "S2_TASK_FILTER_isco_coverage_share": "Coverage",
+            "S2_TASK_FILTER_mean_similarity_retained": "Mean similarity",
+            "S2_TASK_FILTER_gini_tasks_per_isco": "Gini",
         }
     )
     out["Rank"] = pd.to_numeric(out["Rank"], errors="coerce").fillna(0).astype(int)
@@ -130,9 +129,9 @@ def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
             "parameter",
             "recommended_value",
             "selection_score",
-            "S5_coverage",
-            "S5_mean_similarity",
-            "S5_gini_tasks_per_isco",
+            "S2_coverage",
+            "S2_mean_similarity",
+            "S2_gini_tasks_per_isco",
         ]
     ].copy()
     out["parameter"] = out["parameter"].map(lambda x: _PARAM_LABELS.get(x, x))
@@ -141,9 +140,9 @@ def _sweep_param(df: pd.DataFrame) -> pd.DataFrame:
             "parameter": "Parameter",
             "recommended_value": "Recommended value",
             "selection_score": "Selection score",
-            "S5_coverage": "Coverage",
-            "S5_mean_similarity": "Mean similarity",
-            "S5_gini_tasks_per_isco": "Gini",
+            "S2_coverage": "Coverage",
+            "S2_mean_similarity": "Mean similarity",
+            "S2_gini_tasks_per_isco": "Gini",
         }
     )
     for col in ["Selection score", "Coverage", "Mean similarity", "Gini"]:
@@ -407,7 +406,7 @@ def _task_examples_tex() -> str | None:
 
     df_s5 = pd.read_csv(CROSSWALK_PATH)
     if "stage" in df_s5.columns:
-        df_s5 = df_s5[df_s5["stage"] == "S5_FINAL"].copy()
+        df_s5 = df_s5[df_s5["stage"] == "S2_TASK_FILTER"].copy()
     elif "is_best" in df_s5.columns:
         df_s5 = df_s5[df_s5["is_best"] == True].copy()  # noqa: E712
 
@@ -562,7 +561,7 @@ Scenario & Cov.\ & Exact & Sub- & Major \\
 # (src_csv, tex_name, transform, longtable, caption, label)
 TABLE_SPECS: list[tuple] = [
     ("table_baseline_s3_summary.csv", "table_baseline_s3_summary.tex", _baseline_s3,
-     True, "Final-stage (S3) summary metrics across all O*NET releases (v4.0--v30.3).", "tab:s3-summary"),
+     True, "Final-stage (S2) summary metrics across all O*NET releases (v4.0--v30.3).", "tab:s3-summary"),
     ("table_sweep_top_configs.csv", "table_sweep_top_configs.tex", _sweep_top,
      False, None, None),
     ("table_sweep_parameter_recommendations.csv", "table_sweep_parameter_recommendations.tex", _sweep_param,

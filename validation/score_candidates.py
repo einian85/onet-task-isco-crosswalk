@@ -16,9 +16,10 @@ hardcoded docstring in update_configs.py.
                        using each candidate's own overload_abs/overload_quantile.
   - gini            = Gini coefficient of per-group task counts (metrics_unsup.compute_gini)
 
-This reproduces the same numbers pipeline.py's own S5_FINAL unsupervised metrics
-would produce, but computed standalone from the already-materialized candidate
-CSVs in output/candidates/, so it does not require re-running the pipeline.
+This reproduces the same numbers pipeline.py's own S2_TASK_FILTER (final-stage)
+unsupervised metrics would produce, but computed standalone from the
+already-materialized candidate CSVs in output/candidates/, so it does not
+require re-running the pipeline.
 
 Run from the project root:
     python validation/score_candidates.py

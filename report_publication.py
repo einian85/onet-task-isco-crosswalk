@@ -35,12 +35,11 @@ SWEEP_PARAMS = [
     "w_isco_task",
 ]
 
-STAGE_ORDER = ["S1_RETRIEVE", "S2_TASK_FILTER", "S3_COVERAGE"]
+STAGE_ORDER = ["S1_RETRIEVE", "S2_TASK_FILTER"]
 
 STAGE_LABELS = {
     "S1_RETRIEVE": "S1: Retrieve",
-    "S2_TASK_FILTER": "S2: Task filter",
-    "S3_COVERAGE": "S3: Coverage",
+    "S2_TASK_FILTER": "S2: Task filter (final)",
 }
 
 _SOC_LONG = {
@@ -250,10 +249,10 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
         "pareto_candidate",
         "changed_param",
         "changed_value",
-        "S5_FINAL_isco_coverage_share",
-        "S5_FINAL_mean_similarity_retained",
-        "S5_FINAL_mean_links_per_task",
-        "S5_FINAL_gini_tasks_per_isco",
+        "S2_TASK_FILTER_isco_coverage_share",
+        "S2_TASK_FILTER_mean_similarity_retained",
+        "S2_TASK_FILTER_mean_links_per_task",
+        "S2_TASK_FILTER_gini_tasks_per_isco",
     ]
     # drop_duplicates on the *displayed* description, not run_id: two distinct sweep
     # candidates can differ only in an unshown parameter and round to an identical
@@ -280,10 +279,10 @@ def build_sweep_tables() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None
                 "run_id": best["run_id"],
                 "selection_rank": best["selection_rank"],
                 "selection_score": best["selection_score"],
-                "S5_coverage": best["S5_FINAL_isco_coverage_share"],
-                "S5_mean_similarity": best["S5_FINAL_mean_similarity_retained"],
-                "S5_mean_links_per_task": best["S5_FINAL_mean_links_per_task"],
-                "S5_gini_tasks_per_isco": best["S5_FINAL_gini_tasks_per_isco"],
+                "S2_coverage": best["S2_TASK_FILTER_isco_coverage_share"],
+                "S2_mean_similarity": best["S2_TASK_FILTER_mean_similarity_retained"],
+                "S2_mean_links_per_task": best["S2_TASK_FILTER_mean_links_per_task"],
+                "S2_gini_tasks_per_isco": best["S2_TASK_FILTER_gini_tasks_per_isco"],
             }
         )
     per_param_table = pd.DataFrame(per_param_rows).sort_values("parameter").reset_index(drop=True)
@@ -406,9 +405,9 @@ def plot_sweep_tradeoff(out_dir: Path) -> Path | None:
     plt.rcParams.update(PLOT_STYLE)
     fig, ax = plt.subplots(figsize=(10, 7))
     scatter = ax.scatter(
-        df["S3_COVERAGE_isco_coverage_share"],
-        df["S3_COVERAGE_mean_similarity_retained"],
-        s=60 + 220 * (1 - df["S3_COVERAGE_gini_tasks_per_isco"]),
+        df["S2_TASK_FILTER_isco_coverage_share"],
+        df["S2_TASK_FILTER_mean_similarity_retained"],
+        s=60 + 220 * (1 - df["S2_TASK_FILTER_gini_tasks_per_isco"]),
         c=df["selection_score"],
         cmap="viridis",
         alpha=0.85,
@@ -417,8 +416,8 @@ def plot_sweep_tradeoff(out_dir: Path) -> Path | None:
     )
     pareto = df[df["pareto_candidate"] == True]
     ax.scatter(
-        pareto["S3_COVERAGE_isco_coverage_share"],
-        pareto["S3_COVERAGE_mean_similarity_retained"],
+        pareto["S2_TASK_FILTER_isco_coverage_share"],
+        pareto["S2_TASK_FILTER_mean_similarity_retained"],
         s=120,
         facecolors="none",
         edgecolors="#d1495b",

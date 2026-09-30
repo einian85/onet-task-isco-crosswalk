@@ -38,7 +38,7 @@ from shared import (
     load_soc18_crosswalks,
 )
 
-CANDIDATE_PATH = PROJECT_DIR / "output" / "candidates" / "ONET29_sw_s375_d266_i38_t73_o16_task_to_ISCO_crosswalk.csv"
+CANDIDATE_PATH = PROJECT_DIR / "output" / "candidates" / "ONET29_sw_r6_s234_d203_i43_t96_o02_task_to_ISCO_crosswalk.csv"
 RANDOM_SEED = 42
 
 

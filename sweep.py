@@ -78,7 +78,6 @@ def _add_baseline_deltas(results: pd.DataFrame, baseline_run_id: str) -> pd.Data
         "esco_skills_path",
         "esco_occupation_rel_path",
         "esco_occupations_path",
-        "coverage_backfill_strategy",
         "embedding_cache_dir",
         "faiss_index_type",
     }
@@ -98,7 +97,15 @@ def _add_baseline_deltas(results: pd.DataFrame, baseline_run_id: str) -> pd.Data
 
 def _add_composite_score(results: pd.DataFrame) -> pd.DataFrame:
     """Paper's Appendix A sweep score: (3*cov + 2*sim - 2*overload - 2*gini) / 9, raw (not
-    min-max normalized), computed only from S5_FINAL (final-assignment stage) metrics.
+    min-max normalized), computed only from S2_TASK_FILTER (final-assignment stage) metrics.
+
+    pipeline.py's STAGES are exactly S1_RETRIEVE and S2_TASK_FILTER — S2_TASK_FILTER is the
+    real final stage (final_output_path is written from it). S3_COVERAGE/S4_OVERLOAD/S5_FINAL
+    do not exist in the current pipeline; they were removed by the "Simplify the pipeline."
+    and "dead code removal cleanup" commits. Any script still reading S5_FINAL_* is reading a
+    stage that no longer exists — see CONFIG_SELECTION_LOG.md for the resulting bug, discovered
+    when this pointed at S5_FINAL_* columns that were frozen duplicates of S1_RETRIEVE_* in the
+    old sweep summary rather than real final-assignment metrics.
 
     This must stay numerically identical to sweep/run_systematic_sweep_onet29.py::_sweep_score
     and validation/score_candidates.py, which independently compute the same formula. A prior
@@ -110,20 +117,20 @@ def _add_composite_score(results: pd.DataFrame) -> pd.DataFrame:
         return results
     out = results.copy()
     required = [
-        "S5_FINAL_isco_coverage_share",
-        "S5_FINAL_mean_similarity_retained",
-        "S5_FINAL_share_tasks_in_overloaded_isco",
-        "S5_FINAL_gini_tasks_per_isco",
+        "S2_TASK_FILTER_isco_coverage_share",
+        "S2_TASK_FILTER_mean_similarity_retained",
+        "S2_TASK_FILTER_share_tasks_in_overloaded_isco",
+        "S2_TASK_FILTER_gini_tasks_per_isco",
     ]
     if not all(col in out.columns for col in required):
         out["selection_score"] = np.nan
         out["selection_rank"] = np.nan
         return out
 
-    cov = pd.to_numeric(out["S5_FINAL_isco_coverage_share"], errors="coerce").fillna(0.0)
-    sim = pd.to_numeric(out["S5_FINAL_mean_similarity_retained"], errors="coerce").fillna(0.0)
-    overload = pd.to_numeric(out["S5_FINAL_share_tasks_in_overloaded_isco"], errors="coerce").fillna(0.0)
-    gini = pd.to_numeric(out["S5_FINAL_gini_tasks_per_isco"], errors="coerce").fillna(0.0)
+    cov = pd.to_numeric(out["S2_TASK_FILTER_isco_coverage_share"], errors="coerce").fillna(0.0)
+    sim = pd.to_numeric(out["S2_TASK_FILTER_mean_similarity_retained"], errors="coerce").fillna(0.0)
+    overload = pd.to_numeric(out["S2_TASK_FILTER_share_tasks_in_overloaded_isco"], errors="coerce").fillna(0.0)
+    gini = pd.to_numeric(out["S2_TASK_FILTER_gini_tasks_per_isco"], errors="coerce").fillna(0.0)
 
     out["selection_score"] = (3 * cov + 2 * sim - 2 * overload - 2 * gini) / 9
     out["selection_rank"] = out["selection_score"].rank(method="dense", ascending=False).astype(int)
@@ -152,12 +159,12 @@ def _add_pareto_flag(results: pd.DataFrame) -> pd.DataFrame:
         return results
     out = results.copy()
     objective_spec = [
-        ("S5_FINAL_isco_coverage_share", True),
-        ("S5_FINAL_mean_similarity_retained", True),
-        ("S5_FINAL_share_tasks_in_overloaded_isco", False),
-        ("S5_FINAL_gini_tasks_per_isco", False),
-        ("S5_best_link_agreement", True),
-        ("S5_jaccard_links", True),
+        ("S2_TASK_FILTER_isco_coverage_share", True),
+        ("S2_TASK_FILTER_mean_similarity_retained", True),
+        ("S2_TASK_FILTER_share_tasks_in_overloaded_isco", False),
+        ("S2_TASK_FILTER_gini_tasks_per_isco", False),
+        ("S2_TASK_FILTER_best_link_agreement", True),
+        ("S2_TASK_FILTER_jaccard_links", True),
     ]
     available = [(col, maximize) for col, maximize in objective_spec if col in out.columns]
     if not available:
