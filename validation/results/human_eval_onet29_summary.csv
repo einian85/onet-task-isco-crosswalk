@@ -1,2 +1,2 @@
 label,description,n_judged,pct_exact,pct_sub_major,pct_major_group,mean_similarity
-onet29_current,"Current ONET29.2 production config (expanded n=180, Phase D)",180,33.3,56.1,68.3,0.747
+onet29_current,"Current ONET29.2 production config (expanded n=180, Phase D)",180,24.4,41.1,55.0,0.727

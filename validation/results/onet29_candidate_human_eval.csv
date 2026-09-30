@@ -3,5 +3,5 @@ jf_d030_s675_i80_t60_o60,"Not selected: joint fine-sweep candidate (w_dwa=0.030,
 jf_d030_s675_i80_t57_o60,"Runner-up: w_isco_task=0.575 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.80, w_isco_task=0.575, w_occ=0.60)",180,53.3,71.1,79.4,0.702
 jf_d030_s675_i75_t60_o60,"Runner-up: w_isco=0.75 variant (w_dwa=0.030, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",180,53.3,71.7,80.6,0.703
 jf_d050_s675_i75_t60_o60,"Joint sweep rank-1 by composite score (w_dwa=0.050, w_soc=0.675, w_isco=0.75, w_isco_task=0.60, w_occ=0.60)",180,53.3,71.7,80.6,0.704
-sw_s375_d266_i38_t73_o16,"Selected: true systematic-sweep round-6 optimum, chosen by sweep_score alone, independent of validation (w_dwa=0.2656, w_soc=0.375, w_isco=0.375, w_isco_task=0.7344, w_occ=0.1562)",180,33.3,56.1,68.3,0.747
+sw_r6_s234_d203_i43_t96_o02,"Selected: argmax of sweep_score over the full systematic sweep (final-stage metrics), independent of validation (w_dwa=0.2030, w_soc=0.2344, w_isco=0.4296, w_isco_task=0.9610, w_occ=0.0157)",180,24.4,41.1,55.0,0.727
 fg_isco08_dwa00_soc65,"Baseline: no DWA (w_dwa=0.000, w_soc=0.650, w_isco_task=0.70, w_occ=0.70)",180,50.0,68.3,78.3,0.704

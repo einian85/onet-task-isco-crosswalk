@@ -1,4 +1,4 @@
 pair,n_tasks,pct_exact,pct_sub_major,pct_major_group
-mpnet vs bge,18796,69.9,78.4,82.4
-mpnet vs gte,18796,71.0,79.5,83.2
-bge vs gte,18796,86.1,90.5,92.4
+mpnet vs bge,18796,62.5,72.5,78.1
+mpnet vs gte,18796,64.7,74.3,79.4
+bge vs gte,18796,80.4,86.1,88.8

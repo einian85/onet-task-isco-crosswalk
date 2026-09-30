@@ -1,41 +1,41 @@
 label,pred_major_group,n,pct_exact,pct_sub_major,pct_major_group
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",0,13,0.0,0.0,0.0
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",1,959,43.2,57.1,62.6
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",2,4320,51.8,73.1,86.6
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",3,3161,45.2,63.1,69.9
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",4,821,46.9,51.5,62.0
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",5,1327,44.0,52.4,57.2
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",6,286,43.4,57.3,60.8
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",7,2692,54.5,69.0,81.1
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",8,999,57.5,73.5,77.1
-"B1 – ESCO-ONET-MHV alone (semantic, less independent)",9,780,31.9,38.1,46.2
-B2 – SOC10-ISCO-BLS alone,0,20,0.0,0.0,0.0
-B2 – SOC10-ISCO-BLS alone,1,1246,35.9,45.6,51.8
-B2 – SOC10-ISCO-BLS alone,2,5678,43.9,66.9,77.8
-B2 – SOC10-ISCO-BLS alone,3,3975,39.9,53.6,61.7
-B2 – SOC10-ISCO-BLS alone,4,1002,45.7,51.5,61.3
-B2 – SOC10-ISCO-BLS alone,5,1717,43.8,53.0,57.8
-B2 – SOC10-ISCO-BLS alone,6,304,32.9,33.6,41.4
-B2 – SOC10-ISCO-BLS alone,7,3202,49.1,63.3,75.3
-B2 – SOC10-ISCO-BLS alone,8,1279,48.1,65.2,69.8
-B2 – SOC10-ISCO-BLS alone,9,910,30.3,35.3,45.3
-B3 – Lenient union (MHV ∪ BLS),0,20,0.0,0.0,0.0
-B3 – Lenient union (MHV ∪ BLS),1,1246,38.4,50.3,56.4
-B3 – Lenient union (MHV ∪ BLS),2,5699,51.4,75.5,85.5
-B3 – Lenient union (MHV ∪ BLS),3,3975,45.5,62.1,69.9
-B3 – Lenient union (MHV ∪ BLS),4,1002,47.6,52.4,62.3
-B3 – Lenient union (MHV ∪ BLS),5,1717,45.5,55.6,60.0
-B3 – Lenient union (MHV ∪ BLS),6,305,43.3,55.1,57.0
-B3 – Lenient union (MHV ∪ BLS),7,3202,53.7,68.2,80.4
-B3 – Lenient union (MHV ∪ BLS),8,1279,51.5,68.2,73.5
-B3 – Lenient union (MHV ∪ BLS),9,910,33.5,38.8,46.8
-B4 – Strict intersection (MHV ∩ BLS),0,9,0.0,0.0,0.0
-B4 – Strict intersection (MHV ∩ BLS),1,826,46.4,59.1,65.7
-B4 – Strict intersection (MHV ∩ BLS),2,3823,47.1,67.3,78.1
-B4 – Strict intersection (MHV ∩ BLS),3,2714,44.4,57.7,63.2
-B4 – Strict intersection (MHV ∩ BLS),4,772,47.4,53.0,63.7
-B4 – Strict intersection (MHV ∩ BLS),5,1150,48.3,56.7,60.8
-B4 – Strict intersection (MHV ∩ BLS),6,256,35.9,38.3,39.5
-B4 – Strict intersection (MHV ∩ BLS),7,2415,54.6,66.0,77.6
-B4 – Strict intersection (MHV ∩ BLS),8,950,55.8,72.7,75.6
-B4 – Strict intersection (MHV ∩ BLS),9,695,31.7,38.0,48.1
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",0,20,0.0,0.0,0.0
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",1,934,25.9,41.0,49.6
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",2,4231,40.1,64.6,80.4
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",3,3235,32.5,54.1,62.0
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",4,886,32.6,39.1,49.7
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",5,1292,34.1,43.7,49.1
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",6,279,38.4,54.1,60.9
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",7,2700,40.7,58.5,75.4
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",8,915,41.1,62.7,68.1
+"B1 – ESCO-ONET-MHV alone (semantic, less independent)",9,866,21.5,28.3,37.5
+B2 – SOC10-ISCO-BLS alone,0,28,0.0,0.0,0.0
+B2 – SOC10-ISCO-BLS alone,1,1222,22.7,33.6,39.5
+B2 – SOC10-ISCO-BLS alone,2,5560,32.9,58.4,72.3
+B2 – SOC10-ISCO-BLS alone,3,4057,29.5,44.7,53.4
+B2 – SOC10-ISCO-BLS alone,4,1075,32.9,39.5,49.7
+B2 – SOC10-ISCO-BLS alone,5,1691,34.3,44.7,50.6
+B2 – SOC10-ISCO-BLS alone,6,298,29.5,30.5,41.6
+B2 – SOC10-ISCO-BLS alone,7,3225,36.6,53.3,68.7
+B2 – SOC10-ISCO-BLS alone,8,1155,34.0,55.0,60.1
+B2 – SOC10-ISCO-BLS alone,9,1022,19.7,25.4,35.9
+B3 – Lenient union (MHV ∪ BLS),0,28,0.0,0.0,0.0
+B3 – Lenient union (MHV ∪ BLS),1,1224,24.5,37.6,44.4
+B3 – Lenient union (MHV ∪ BLS),2,5576,39.0,66.3,79.8
+B3 – Lenient union (MHV ∪ BLS),3,4059,33.6,53.7,62.6
+B3 – Lenient union (MHV ∪ BLS),4,1075,34.4,40.9,51.3
+B3 – Lenient union (MHV ∪ BLS),5,1691,35.6,46.9,52.5
+B3 – Lenient union (MHV ∪ BLS),6,299,40.5,53.5,57.2
+B3 – Lenient union (MHV ∪ BLS),7,3226,40.3,58.0,74.4
+B3 – Lenient union (MHV ∪ BLS),8,1155,37.7,59.3,65.8
+B3 – Lenient union (MHV ∪ BLS),9,1022,23.0,29.5,38.6
+B4 – Strict intersection (MHV ∩ BLS),0,17,0.0,0.0,0.0
+B4 – Strict intersection (MHV ∩ BLS),1,797,27.5,41.5,50.6
+B4 – Strict intersection (MHV ∩ BLS),2,3764,35.8,59.1,71.9
+B4 – Strict intersection (MHV ∩ BLS),3,2757,32.0,46.9,53.2
+B4 – Strict intersection (MHV ∩ BLS),4,830,32.9,39.3,50.4
+B4 – Strict intersection (MHV ∩ BLS),5,1130,37.0,46.6,51.8
+B4 – Strict intersection (MHV ∩ BLS),6,245,30.2,33.5,36.7
+B4 – Strict intersection (MHV ∩ BLS),7,2435,40.3,54.8,70.4
+B4 – Strict intersection (MHV ∩ BLS),8,855,39.1,60.5,64.2
+B4 – Strict intersection (MHV ∩ BLS),9,780,19.5,25.9,36.7

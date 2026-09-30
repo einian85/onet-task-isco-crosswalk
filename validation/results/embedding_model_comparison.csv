@@ -1,4 +1,4 @@
 model,isco_groups,mean_sim,pct_coverage,pct_exact,pct_sub_major,pct_major_group
-all-mpnet-base-v2,423,0.748,99.9,68.0,81.2,88.4
-BAAI/bge-large-en-v1.5,417,0.869,99.9,70.5,82.7,89.7
-thenlper/gte-large,419,0.951,99.9,74.0,84.7,91.1
+all-mpnet-base-v2,431,0.722,99.9,53.7,72.2,83.1
+BAAI/bge-large-en-v1.5,426,0.849,99.9,54.3,72.5,83.3
+thenlper/gte-large,426,0.943,99.9,58.5,75.5,85.3
