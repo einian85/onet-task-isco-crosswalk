@@ -109,6 +109,7 @@ The weights are the optimum of an unsupervised parameter sweep on O*NET 29.2 (se
 |-- CONFIG_SELECTION_LOG.md   # Dated record of the configuration selection
 |-- fact_audit_table.md       # Fact audit of the manuscript resubmitted 30 Sep 2026 (checked 1 Oct 2026)
 |
+|-- LICENSE                  # MIT (code); data and documentation CC BY 4.0
 `-- data/                      # Not included - download instructions below
 ```
 
@@ -267,6 +268,14 @@ Final crosswalk CSVs contain one row per task, the unit group kept at the `S2_TA
 | `is_best` | Whether the row is the task's best-scoring retained target |
 
 The full stage files (`S1_RETRIEVE`, `S2_TASK_FILTER`, with `run_id`, `stage`, `task_key`, `target_id`, `gap_1_k`, `topk_entropy`, `kept_reason` and `task_text_hash`) are written under `results/predictions/<run_id>/`, together with `config.json` and `run_manifest.json`. The run ID is a hash of the config, the git commit and the data version.
+
+---
+
+## Licence
+
+- **Code** (all `.py` files and configs): MIT License, see [`LICENSE`](LICENSE).
+- **Data and documentation** (the crosswalk files in `output/`; the results in `validation/results/`, `results_ablation/`, `results_bge/` and `results_gte/`; this README and the other documentation): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Versions released before October 2026 were deposited on Zenodo under CC BY 4.0 as a whole.
+- **Third-party content.** The crosswalk files contain O*NET task statements and occupation titles (U.S. Department of Labor, Employment and Training Administration), and ISCO-08 titles (International Labour Organization). The pipeline also uses ESCO occupation and skill labels (European Commission). This content remains subject to its providers' terms; please credit O*NET, ESCO and the ILO as their terms require when you redistribute it.
 
 ---
 
