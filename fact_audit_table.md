@@ -1,5 +1,11 @@
 # Fact Audit Table — "Mapping O*NET Tasks to ISCO Occupations using Text Similarity"
 
+> **Historical record.** This audit covers the version submitted in August 2026, with its production
+> configuration (`w_soc_title = 0.675`, `w_dwa = 0.030`, `w_isco = 0.80`, `w_isco_task = 0.60`,
+> `w_occ = 0.60`). The revised manuscript (resubmitted 30 September 2026) uses the configuration
+> selected on 30 September (see `CONFIG_SELECTION_LOG.md`), so most numbers referred to below have
+> changed. `verify_paper_numbers_v2.py` prints the current values.
+
 All stated facts from the main paper and supplementary material (Online Appendix).
 Facts are listed in document order. Numbers are not reproduced; only the nature of each claim is described.
 

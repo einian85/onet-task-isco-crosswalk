@@ -245,3 +245,24 @@ look current but aren't. The tell here was two identically-named-seeming things 
 existence in the *current* pipeline code, not just in the data file, would have caught this
 immediately — worth doing as a standing check before trusting any `results/summary/*.csv` file that
 wasn't generated in the current session.
+
+## 2026-10-01 — what the `w_soc_title = 0` candidates actually ran
+
+**What was found:** when `w_soc_title = 0` and `include_soc_title = true`, `pipeline.py` built the task
+text as "Occupation: *title*. *task*" (an older mode). But the task-embedding checkpoint was named by
+O*NET release and model only, and reused whenever its row count matched, so a run with different task
+text silently got the vectors of an earlier run. No title-prefixed text was ever embedded: none of the
+18,796 prefixed O*NET 29.2 texts is in the text store. So every `w_soc_title = 0` run used the plain
+task text, i.e. no title. That covers 1,750 of the 16,750 candidates of the 30 September sweep and the
+no-SOC-title and task-only ablations.
+
+**What was fixed (`4e25858`, `1c11e00`):**
+- Checkpoint names now carry a hash of their texts, so a checkpoint is reused only for the texts it
+  was built from.
+- The prefix mode is removed, so the code now does what every recorded run did: `w_soc_title = 0`
+  means no title.
+- The two ablation configs set `include_soc_title: false`. Their outputs were regenerated: the same
+  ISCO-08 group for every task, and an identical ablation table.
+
+**Effect on the selection:** none. The selected configuration has `w_soc_title = 0.2344`, and the
+`w_soc_title = 0` candidates were scored on exactly the representation the code now builds.

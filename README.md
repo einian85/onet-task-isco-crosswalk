@@ -1,11 +1,13 @@
 # O*NET Task -> ISCO-08 Crosswalk
 
-Code and data for the NLP-based O*NET task-ISCO-08 crosswalk described in:
+Code and data for the O*NET task -> ISCO-08 crosswalk described in:
 
-> Einian, M.  
-> 2026.  
-> Mapping O*NET Tasks to ISCO Occupations using Text Similarity  
-> [in submission process]
+> Einian, M.
+> 2026.
+> Mapping O*NET Tasks to ISCO Occupations using Text Similarity
+> [manuscript under review]
+
+The crosswalk files, code and manuscript versions are archived on Zenodo under the concept DOI [10.5281/zenodo.20359118](https://doi.org/10.5281/zenodo.20359118), which resolves to the latest version.
 
 Pre-computed crosswalk files are in [`output/`](output/). The sections below describe how to reproduce them from scratch.
 
@@ -13,25 +15,40 @@ Pre-computed crosswalk files are in [`output/`](output/). The sections below des
 
 ## What this does
 
-Each O*NET task statement is mapped to exactly one ISCO-08 4-digit unit group using dual-side Sentence-BERT (`all-mpnet-base-v2`) embeddings and FAISS retrieval. The query embedding blends the task text with Detailed Work Activity (DWA) labels and the SOC occupation title; the target embedding blends ISCO-08 official descriptions and task items with ESCO occupation text and ESCO skills. Candidates pass through five filtering stages: retrieval -> task-filter -> coverage -> overload -> final.
+Each O*NET task statement is mapped to exactly one ISCO-08 4-digit unit group. Both sides are represented with Sentence-BERT (`all-mpnet-base-v2`) embeddings, and each task is matched to the closest unit group by exact nearest-neighbour search (FAISS inner product on normalised vectors, i.e. cosine similarity).
 
-Each task is assigned to exactly one ISCO-08 unit group. Coverage backfill ensures missing ISCO groups are represented using only unassigned tasks, so the one-to-one property is preserved throughout.
+- **Query (one vector per task).** The task text is blended with the average embedding of its Detailed Work Activity (DWA) labels, and then with the embedding of its SOC occupation title:
+  `core = (1 - w_dwa) * task + w_dwa * DWA average`, `query = (1 - w_soc_title) * core + w_soc_title * SOC title`.
+  With `w_soc_title = 0` the query has no title.
+- **Target (one vector per ISCO-08 unit group, 436 in all).** An ISCO part blends the unit group's official task items with its title, definition and included occupations. An ESCO part blends the label and description of the ESCO occupations in the group with their skills:
+  `ISCO = w_isco_task * ISCO task items + (1 - w_isco_task) * ISCO info text`,
+  `ESCO = w_occ * ESCO occupations + (1 - w_occ) * ESCO skills`,
+  `target = w_isco * ISCO + (1 - w_isco) * ESCO`.
+- **Two stages.** `S1_RETRIEVE` retrieves the 5 most similar unit groups per task. `S2_TASK_FILTER` keeps the best one. The final crosswalk is written from S2.
 
 All 63 O*NET releases from v4.0 (2001) through v30.3 (2025) are covered, spanning five SOC taxonomy generations:
 
-| SOC generation | O*NET versions | Notes |
-|----------------|---------------|-------|
-| Pre-2006 SOC | v4.0–v9.x | Text format only; occupation titles from `Occupation Data.txt` |
-| SOC 2006 | v10.0–v13.x | Text format only |
-| SOC 2009 | v14.0–v15.0 | Text format only |
-| SOC 2010 | v15.1–v25.0 | Text format only through v20.0; Excel from v20.1 |
-| SOC 2018 | v25.1–v30.3 | Excel format |
+| SOC generation | O*NET versions | Releases | Notes |
+|----------------|---------------|----------|-------|
+| Pre-2006 SOC | v4.0–v9.0 | 7 | Text format only; occupation titles from `Occupation Data.txt`; no task IDs |
+| SOC 2006 | v10.0–v13.0 | 4 | Text format only; task IDs complete from v13.0 |
+| SOC 2009 | v14.0–v15.0 | 2 | Text format only |
+| SOC 2010 | v15.1–v25.0 | 27 | Text format through v20.0; Excel from v20.1 |
+| SOC 2018 | v25.1–v30.3 | 23 | Excel format |
 
-Production blend weights (all versions share the same settings):
+Releases before v20.1 have no Tasks-to-DWAs file, so the DWA term drops out of their query (the pipeline falls back to `w_dwa = 0` when the file is missing).
 
-| `w_soc_title` | `w_dwa` | `w_isco` | `w_isco_task` | `w_occ` | `max_links_per_task` |
-|---------------|---------|----------|---------------|---------|----------------------|
-| 0.375 | 0.2656 | 0.375 | 0.7344 | 0.1562 | 1 |
+### Production settings
+
+All 63 release configs share these values:
+
+| `w_soc_title` | `w_dwa` | `w_isco` | `w_isco_task` | `w_occ` | `k_retrieve` | `max_links_per_task` |
+|---------------|---------|----------|---------------|---------|--------------|----------------------|
+| 0.2344 | 0.2030 | 0.4296 | 0.9610 | 0.0157 | 5 | 1 |
+
+Multiplied out, the query vector is 61.0% task text, 15.5% DWA average and 23.4% SOC title. `min_sim = 0.45` and `margin_best = 0.03` are the S2 thresholds; they do not bind when only one link per task is kept.
+
+The weights are the optimum of an unsupervised parameter sweep on O*NET 29.2 (see below), selected on 30 September 2026. [`CONFIG_SELECTION_LOG.md`](CONFIG_SELECTION_LOG.md) records how the selection was made and corrected.
 
 ---
 
@@ -39,50 +56,58 @@ Production blend weights (all versions share the same settings):
 
 ```text
 .
-|-- pipeline.py               # Core NLP pipeline (embedding, retrieval, filtering)
-|-- config.py                 # RunConfig dataclass (all parameters)
+|-- pipeline.py               # Core pipeline: text construction, embeddings, retrieval (S1), task filter (S2)
+|-- config.py                 # RunConfig dataclass (all parameters), config loading, run IDs
+|-- metrics_unsup.py          # Unsupervised stage metrics (coverage, similarity, Gini, overload, confidence)
 |-- evaluate.py               # Evaluation utilities
-|-- metrics_unsup.py          # Unsupervised similarity metrics
 |-- stability.py              # Cross-run stability analysis
 |
-|-- run_all_versions.py       # Run pipeline for all (or selected) O*NET versions
-|-- generate_configs.py       # Generate configs/config_onet*.yaml for all versions
+|-- run_all_versions.py       # Run the pipeline for all (or selected) O*NET releases
 |-- download_onet_versions.py # Download and normalise all O*NET release zips
+|-- generate_configs.py       # Generate configs/config_onet*.yaml for releases that have none
+|-- update_configs.py         # Write the sweep's top-scoring weights into every config
+|
+|-- run_ablation.py           # Ablation study on O*NET 29.2 (no DWA, no ESCO, no SOC title, task text only)
+|-- run_embedding_comparison.py # Same pipeline with BAAI/bge-large-en-v1.5 and thenlper/gte-large
+|-- compare_crosswalk_agreement.py # Task-level agreement between encoders
+|-- compute_cis.py            # Wilson 95% confidence intervals for the validation statistics
 |
 |-- report_occupation.py      # Occupation-level comparison vs reference crosswalks
 |-- report_publication.py     # Publication tables and figures
 |-- export_latex.py           # Export tables to LaTeX fragments
-|-- verify_paper_numbers.py   # Sanity-check all numbers cited in the paper
+|-- verify_paper_numbers_v2.py # Print every key quantity cited in the paper from the current files
+|-- verify_paper_numbers.py   # Superseded by v2 (its "paper says" values are from an earlier draft)
+|-- check_coverage.py         # Quick coverage check of the O*NET 29.2 crosswalk
+|-- check_facts.py            # Checks for three facts of the August 2026 fact audit (historical)
 |
-|-- configs/                  # One YAML per O*NET release (v4.0–v30.3)
-|   |-- config_onet40.yaml
-|   |-- config_onet50.yaml
-|   |   ...
-|   `-- config_onet303.yaml
-|
-|-- sweep.py                  # Sweep engine (random configs, Pareto scoring)
+|-- configs/                  # One YAML per O*NET release (v4.0–v30.3), plus ablation and encoder variants
+|-- sweep.py                  # Sweep engine (candidate configs, selection score)
 |-- sweep/
-|   |-- run_systematic_sweep_onet29.py # Adaptive iterative parameter sweep
+|   |-- run_systematic_sweep_onet29.py # Adaptive iterative five-parameter sweep on O*NET 29.2
 |   |-- plot_sweep_params.py           # Parameter heatmaps
-|   |-- _best_config.py                # Inspect best sweep configurations
-|   |-- _sweep_stats.py                # Sweep diagnostics
-|   `-- _trace_rounds.py               # Trace adaptive sweep rounds
+|   `-- _best_config.py, _check_wisco.py, _sweep_stats.py, _trace_rounds.py  # Sweep diagnostics
 |
-|-- output/                   # Pre-computed crosswalk CSVs (one per O*NET release)
+|-- output/                   # Pre-computed crosswalk CSVs: one per O*NET release, plus
+|   |                         # ONET292_abl_* (ablations) and ONET292_bge_*, ONET292_gte_* (encoders)
 |   |-- ONET292_task_to_ISCO_crosswalk.csv
 |   |   ...
 |   `-- ONET40_task_to_ISCO_crosswalk.csv
+|-- results_ablation/, results_bge/, results_gte/   # Stage files and metrics of the ablation and encoder runs
 |
 |-- validation/
 |   |-- shared.py                      # Shared paths and loaders
-|   |-- validate_chain.py              # Approach 1: chain-crosswalk agreement
-|   |-- generate_workbook.py           # Approach 2a: generate expert annotation workbook
-|   |-- evaluate_annotations.py        # Approach 2b: evaluate filled workbook
-|   `-- results/
-|       |-- chain_eval_onet29_overall.csv
-|       |-- human_eval_onet29.csv
-|       |-- human_eval_onet29_summary.csv
-|       `-- annotation_workbook_onet29.xlsx
+|   |-- validate_chain.py              # Approach 1: chain crosswalk agreement
+|   |-- audit_chain_disagreements.py   # Inspect tasks where the chain crosswalks disagree
+|   |-- generate_workbook.py           # Approach 2a: expert annotation workbook
+|   |-- evaluate_annotations.py        # Approach 2b: evaluate the filled workbook
+|   |-- *_phase_d.py                   # Expansion of the annotation sample to 180 tasks
+|   |-- compare_onet29_candidates.py, score_candidates.py   # Candidate-configuration comparisons
+|   |-- reviewer_c1_*.py ... reviewer_c4_*.py               # Reviewer checks: heterogeneity, encoders,
+|   |                                                       # objective sensitivity, coverage
+|   `-- results/                       # Chain, annotation, ablation and reviewer-check results
+|
+|-- CONFIG_SELECTION_LOG.md   # Dated record of the configuration selection
+|-- fact_audit_table.md       # Fact audit of the August 2026 submission (historical)
 |
 `-- data/                      # Not included - download instructions below
 ```
@@ -132,7 +157,7 @@ This reads `data/version_list.csv` and places normalised `Task Statements.txt` (
 **ISCO-08** (<https://www.ilo.org/public/english/bureau/stat/isco/isco08/>):
 - `ISCO-08 EN Structure and definitions.xlsx` -> `data/isco/`
 
-**Reference crosswalks**:
+**Reference crosswalks** (used for validation only):
 
 | Source | File | Save to |
 |--------|------|---------|
@@ -152,83 +177,81 @@ python run_all_versions.py                        # all 63 versions (skips exist
 python run_all_versions.py --force                # re-run everything
 python run_all_versions.py --versions 29.2 25.0  # specific versions only
 python run_all_versions.py --dry-run              # print run order without executing
+python pipeline.py configs/config_onet292.yaml    # a single release
 ```
 
-Configs live in `configs/`. To regenerate them (e.g. after changing settings):
+Configs live in `configs/`. `generate_configs.py` creates configs for releases that have none, and `update_configs.py` writes the sweep's top-scoring weights into all of them.
 
-```bash
-python generate_configs.py
-```
-
-Embeddings are cached in `checkpoints/` after the first run. ESCO and ISCO source files are cached in-process across versions, so the 63-version run does not reload them repeatedly.
+Embeddings are cached in `checkpoints/`. A text store holds one vector per distinct text, so a text shared across releases is encoded once. The per-release matrices are saved under names that include a hash of their texts, so a cached matrix is reused only for exactly the texts it was built from. ESCO and ISCO source files are also cached in-process across releases.
 
 ---
 
 ## Reproducing the parameter sweep
 
-The ONET29 sensitivity analysis is produced by:
-
 ```bash
-# Adaptive five-parameter sweep (ONET29)
-python sweep/run_systematic_sweep_onet29.py
-
-# Parameter heatmaps
-python sweep/plot_sweep_params.py
+python sweep/run_systematic_sweep_onet29.py   # adaptive five-parameter sweep on O*NET 29.2
+python sweep/plot_sweep_params.py             # parameter heatmaps
 ```
 
-Sweep metrics are written to `results/summary/`; parameter figures are written to `sweep/` and copied into `results/publication/` by the publication scripts.
+Each round evaluates a 5-point grid per parameter and zooms in around the best candidate, until the improvement falls below the convergence threshold. Every candidate is scored on its final-stage (S2) metrics:
+
+`score = (3 * ISCO coverage + 2 * mean similarity - 2 * overload share - 2 * Gini) / 9`
+
+The selection is unsupervised: the validation data play no part in it. The run behind the production settings took 6 rounds and 16,750 candidates. Sweep metrics are written to `results/summary/` (regenerable, not tracked). `update_configs.py` then takes the top-scoring candidate.
 
 ---
 
 ## Reproducing the paper tables and figures
 
 ```bash
-python report_occupation.py    # occupation-level comparison -> results/publication/
-python report_publication.py   # parameter sensitivity, stage progression -> results/publication/
-python export_latex.py         # LaTeX table fragments -> results/publication/tables/
-python verify_paper_numbers.py # sanity-check all numbers cited in the paper
+python report_occupation.py        # occupation-level comparison -> results/publication/
+python report_publication.py       # parameter sensitivity, stage progression -> results/publication/
+python export_latex.py             # LaTeX table fragments -> results/publication/tables/
+python compute_cis.py              # Wilson confidence intervals
+python verify_paper_numbers_v2.py  # print every key quantity cited in the paper
 ```
 
 ---
 
 ## Validation
 
-Two validation approaches are documented in the paper:
-
-**Approach 1 - Chain crosswalk agreement**:
+**Approach 1 - Chain crosswalk agreement.** For each of the 50 SOC 2010 and SOC 2018 releases (v15.1–v30.3), each task's ISCO-08 group is compared with the groups that institutional concordances assign to its SOC occupation. The scenarios are:
+- SOC 2018 releases: ESCO–SOC 2018 alone (A1), SOC 2018–ESCO alone (A2), strict intersection (A3), lenient union (A4).
+- SOC 2010 releases: Matysiak et al. ESCO–O*NET alone (B1), BLS SOC 2010–ISCO-08 alone (B2), lenient union (B3), strict intersection (B4).
 
 ```bash
 cd validation && python validate_chain.py
 ```
 
-Results: `validation/results/chain_eval_onet{tag}_overall.csv` (one file per selected release; tags: 251, 292, 303, 151, 200, 250)
+Results: `validation/results/chain_eval_onet{tag}_overall.csv`, one file per release.
 
-**Approach 2 - Human expert annotation**:
+**Approach 2 - Human expert annotation.** A sample of O*NET 29.2 tasks was annotated with ISCO-08 codes, without access to the model's answers, and compared with the crosswalk. The sample was later expanded to 180 tasks (`*_phase_d.py`), and 20 tasks were annotated twice as a test-retest check.
 
 ```bash
-# Generate workbook (then fill in expert_isco column)
-cd validation && python generate_workbook.py
-
-# After workbook is filled, evaluate
-cd validation && python evaluate_annotations.py
+cd validation && python generate_workbook.py     # generate the workbook (then fill in expert_isco)
+cd validation && python evaluate_annotations.py  # evaluate the filled workbook
 ```
 
-The workbook intentionally excludes model predictions to avoid biasing annotation.
+**Robustness.** `run_ablation.py` removes one input at a time on O*NET 29.2: the SOC title, the DWA labels, ESCO, or everything but the task text. `run_embedding_comparison.py` reruns the pipeline with two other encoders. The `validation/reviewer_c*` scripts hold the checks requested in review.
 
 ### Key validation results
 
-| Metric | O*NET 29.2 |
-|--------|-----------|
-| Chain crosswalk agreement, lenient union | 68.0% exact; 88.4% major-group |
-| Human expert annotation (n=108) | 36.1% exact; 57.4% sub-major; 72.2% major-group |
+| Releases | Tasks | ISCO-08 groups reached | Exact | Sub-major | Major group |
+|----------|-------|------------------------|-------|-----------|-------------|
+| SOC 2018 releases (23), chain A4 | 18,796–19,281 | 430–431 | 53.6–53.7% | | 83.0–83.1% |
+| SOC 2010 releases (27), chain B3 | 18,783–19,735 | 431–433 | 35.7–36.7% | | 65.5–66.5% |
+| O*NET 29.2, chain A4 | 18,796 | 431 | 53.7% | 72.2% | 83.1% |
+| O*NET 29.2, human annotation (n = 180) | | | 24.4% [18.7, 31.2] | 41.1% [34.2, 48.4] | 55.0% [47.7, 62.1] |
 
-Chain crosswalk validation is available for all 63 releases. The O*NET 29.2 mapping assigns tasks to 435 of 436 ISCO-08 unit groups; the only missing group is ISCO 7516 (Tobacco Preparers and Tobacco Products Makers).
+Brackets give Wilson 95% confidence intervals. In the test-retest check (n = 20), the two annotation rounds agreed on 85.0% of tasks at four digits and on all tasks at the major-group level.
+
+The O*NET 29.2 crosswalk reaches 431 of the 436 ISCO-08 unit groups. The five groups without a task are 1113 (traditional chiefs and heads of villages), 5161 (astrologers and fortune-tellers), 7516 (tobacco preparers), 9332 (drivers of animal-drawn vehicles) and 9624 (water and firewood collectors).
 
 ---
 
 ## Output format
 
-Final crosswalk CSVs contain one row per retained task-ISCO link after the `S5_FINAL` stage. The current export intentionally writes a compact public-use schema:
+Final crosswalk CSVs contain one row per task, the unit group kept at the `S2_TASK_FILTER` stage:
 
 | Column | Description |
 |--------|-------------|
@@ -243,7 +266,7 @@ Final crosswalk CSVs contain one row per retained task-ISCO link after the `S5_F
 | `gap_1_2` | Similarity gap between the top-1 and top-2 retrieved targets |
 | `is_best` | Whether the row is the task's best-scoring retained target |
 
-Full intermediate stage files, including `run_id`, `stage`, `task_key`, `target_id`, `gap_1_k`, `topk_entropy`, `kept_reason`, and `task_text_hash`, are written under `results/predictions/<run_id>/`.
+The full stage files (`S1_RETRIEVE`, `S2_TASK_FILTER`, with `run_id`, `stage`, `task_key`, `target_id`, `gap_1_k`, `topk_entropy`, `kept_reason` and `task_text_hash`) are written under `results/predictions/<run_id>/`, together with `config.json` and `run_manifest.json`. The run ID is a hash of the config, the git commit and the data version.
 
 ---
 
@@ -252,10 +275,11 @@ Full intermediate stage files, including `run_id`, `stage`, `task_key`, `target_
 If you use the crosswalks or code, please cite:
 
 ```bibtex
-@article{einian2026onet,
+@misc{einian2026onet,
   title  = {Mapping O*NET Tasks to ISCO Occupations using Text Similarity},
   author = {Einian, Majid},
   year   = {2026},
-  note   = {Working paper}
+  doi    = {10.5281/zenodo.20359118},
+  note   = {Manuscript under review}
 }
 ```
