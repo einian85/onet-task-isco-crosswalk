@@ -9,8 +9,8 @@ SOC taxonomy by version range:
   v4.0  – v9.x : onet_soc_pre2006  (SOC 2000 / DOT-based)
   v10.0 – v13.x: onet_soc_2006
   v14.0 – v15.0: onet_soc_2009
-  v15.1 – v25.3: onet_soc_2010     (SOC 2010 standard)
-  v26.0+        : onet_soc_2019     (SOC 2018 standard)
+  v15.1 – v25.0: onet_soc_2010     (SOC 2010 standard)
+  v25.1+        : onet_soc_2019     (SOC 2018 standard)
 
 Text-only versions (v4.0–v20.0) get two overrides:
   w_dwa=0  — no Tasks-to-DWAs file in any old text release.

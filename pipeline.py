@@ -949,8 +949,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "config",
         nargs="?",
-        default=str(Path(__file__).resolve().with_name("config_onet292.yaml")),
-        help="Path to a YAML or JSON run config. Defaults to config_onet292.yaml.",
+        default=str(Path(__file__).resolve().parent / "configs" / "config_onet292.yaml"),
+        help="Path to a YAML or JSON run config. Defaults to configs/config_onet292.yaml.",
     )
     args = parser.parse_args(argv)
     result = run_pipeline(Path(args.config))

@@ -1,5 +1,8 @@
 """
 Verify facts #15, #50b, and #104 from the fact audit table.
+
+Historical: the audit and the "Paper states" values below refer to the August 2026
+submission. verify_paper_numbers_v2.py prints the current values.
 """
 import sys
 import pandas as pd

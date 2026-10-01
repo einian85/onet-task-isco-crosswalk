@@ -2,6 +2,9 @@
 verify_paper_numbers.py
 Computes and prints every key quantity cited in the paper.
 Run from the project root: python verify_paper_numbers.py
+
+Superseded by verify_paper_numbers_v2.py: the "paper says" values printed below
+are from an earlier draft and no longer match the paper.
 """
 import re
 import pandas as pd
