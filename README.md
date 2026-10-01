@@ -107,7 +107,7 @@ The weights are the optimum of an unsupervised parameter sweep on O*NET 29.2 (se
 |   `-- results/                       # Chain, annotation, ablation and reviewer-check results
 |
 |-- CONFIG_SELECTION_LOG.md   # Dated record of the configuration selection
-|-- fact_audit_table.md       # Fact audit of the August 2026 submission (historical)
+|-- fact_audit_table.md       # Fact audit of the manuscript resubmitted 30 Sep 2026 (checked 1 Oct 2026)
 |
 `-- data/                      # Not included - download instructions below
 ```
