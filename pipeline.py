@@ -112,10 +112,16 @@ def _target_fingerprint(cfg: RunConfig) -> str:
     return hashlib.sha256(json.dumps(relevant, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
-def raw_checkpoint_path(cfg: RunConfig, name: str) -> Path:
-    """Path for Tier 1 (weight-independent) embeddings."""
+def raw_checkpoint_path(cfg: RunConfig, name: str, text_hashes: list[str]) -> Path:
+    """Path for Tier 1 (weight-independent) embeddings.
+
+    The name carries a hash of the embedded texts, so a checkpoint is reused only
+    for exactly the texts it was built from (a checkpoint keyed on the data files
+    alone would be reused for any texts with the same row count).
+    """
     fp = _query_fingerprint(cfg) if name in _ONET_TIER1_NAMES else _target_fingerprint(cfg)
-    return _embedding_cache_dir(cfg) / f"{name}_{fp}.pkl"
+    content = stable_hash(text_hashes)[:12]
+    return _embedding_cache_dir(cfg) / f"{name}_{fp}_{content}.pkl"
 
 
 def _text_store_path(cfg: RunConfig) -> Path:
@@ -193,12 +199,13 @@ def build_task_text(df_tasks: pd.DataFrame, cfg: RunConfig) -> pd.DataFrame:
     """Build task_text column (task description only — DWAs are embedded separately)."""
     df_tasks = df_tasks.copy()
     titles = df_tasks["Title"].fillna("").astype(str).str.strip()
-    parts = []
-    # When w_soc_title > 0, title is contributed via a separate weighted embedding
-    # so it is NOT prepended here (avoids double-counting).
-    if cfg.include_soc_title and cfg.w_soc_title == 0:
-        parts.append("Occupation: " + titles + ".")
-    parts.append(df_tasks["Task"].astype(str).str.strip() + ".")
+    # The SOC title enters the query only as its own embedding, weighted by
+    # w_soc_title; w_soc_title = 0 means no title. (An older mode prepended the
+    # title to the task text when w_soc_title = 0. Because the task-embedding
+    # checkpoint was keyed on the O*NET release alone, every recorded run,
+    # including all w_soc_title = 0 sweep candidates and ablations, in fact
+    # embedded the plain task text, so removing that mode changes no result.)
+    parts = [df_tasks["Task"].astype(str).str.strip() + "."]
     df_tasks["task_text"] = [_join_nonempty(list(vals)) for vals in zip(*parts)]
     df_tasks["soc_title_text"] = titles
     return df_tasks
@@ -392,14 +399,15 @@ def embed_texts(
 
     Level 1 — in-process array cache (keyed by version checkpoint path):
         Free hit for sweep variants that reuse the same version data.
-    Level 2 — per-version matrix checkpoint on disk:
-        Avoids reassembling the matrix on subsequent runs of the same version.
+    Level 2 — per-version matrix checkpoint on disk, named by a hash of its texts:
+        Avoids reassembling the matrix on subsequent runs with the same texts.
     Level 3 — cross-version text store on disk (keyed by sha1 of each string):
         Texts shared across O*NET versions are encoded only once. Any new texts
         not yet in the store are encoded in a single batch, then the store is
         updated. The assembled matrix is then written as the version checkpoint.
     """
-    path = raw_checkpoint_path(cfg, cache_name)
+    hashes = [stable_task_hash(t) for t in texts]
+    path = raw_checkpoint_path(cfg, cache_name, hashes)
     cache_key = str(path)
 
     # Level 1: in-process memory
@@ -424,7 +432,6 @@ def embed_texts(
     if emb is None:
         # Level 3: text store — encode only genuinely new strings
         store = _load_text_store(cfg)
-        hashes = [stable_task_hash(t) for t in texts]
         uncached = list(dict.fromkeys(t for t, h in zip(texts, hashes) if h not in store))
 
         if uncached:

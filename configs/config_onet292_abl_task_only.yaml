@@ -13,7 +13,7 @@ data_version: managed-occupation-standards
 onet_release: db_29_2_excel
 esco_release: ESCO_en
 random_seed: 42
-include_soc_title: true
+include_soc_title: false
 w_soc_title: 0.0
 w_dwa: 0.0
 include_esco_skills: true

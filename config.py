@@ -40,7 +40,7 @@ class RunConfig:
     random_seed: int
     include_soc_title: bool = False
     # ── Query-side blend weights (independent dials — no sum constraint) ─────────
-    #   w_soc_title : separate SOC-title embedding blended into query (0 = text-prepend)
+    #   w_soc_title : separate SOC-title embedding blended into query (0 = no title)
     #   w_dwa       : separate DWA-items embedding blended into query core (0 = no DWA)
     # Query blend: core = (1−w_dwa)·task_emb + w_dwa·dwa_avg_emb
     #              query = (1−w_soc_title)·core + w_soc_title·title_emb

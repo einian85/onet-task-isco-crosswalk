@@ -16,7 +16,7 @@ esco_release: ESCO_en
 random_seed: 42
 # ── O*NET/SOC query-side embedding blend ──────────────────────────────────────
 # w_soc_title > 0: blend separate SOC-title embedding into the query vector.
-# w_soc_title = 0: title is prepended as text instead (legacy; include_soc_title must be true).
+# w_soc_title = 0: no SOC title in the query.
 include_soc_title: true
 # ── Query-side blend weights ───────────────────────────────────────────────────
 w_soc_title: 0.2344     # separate SOC-title embedding weight
