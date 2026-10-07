@@ -32,11 +32,26 @@ STAGE_LABELS = {
     "S2_TASK_FILTER": "S2: Task filter (final)",
 }
 
+# Display names for the four reference crosswalks; the manuscript uses the same names
+# (Section 2.2): O*NET Center (ESCO -> O*NET-SOC), ESCO Secretariat (O*NET-SOC -> ESCO),
+# MHV (Matysiak, Hardy and van der Velde) and BLS.
 CROSSWALK_LABELS = {
-    "XW18.1_esco_to_onetsoc": "ESCO-ONET-SOC (SOC18)",
-    "XW18.2_onetsoc_to_esco": "ONET-SOC-ESCO (SOC18)",
-    "XW10.1_esco_onet": "ESCO-ONET (MHV)",
-    "XW10.2_isco_soc": "BLS ISCO-SOC",
+    "XW18.1_esco_to_onetsoc": "O*NET Center",
+    "XW18.2_onetsoc_to_esco": "ESCO Secretariat",
+    "XW10.1_esco_onet": "MHV",
+    "XW10.2_isco_soc": "BLS",
+}
+
+# Display names for the validation scenarios, keyed by scenario code
+SCENARIO_LABELS = {
+    "A1": "A1 – O*NET Center",
+    "A2": "A2 – ESCO Secretariat",
+    "A3": "A3 – Strict intersection",
+    "A4": "A4 – Lenient union",
+    "B1": "B1 – MHV$^{a}$",
+    "B2": "B2 – BLS",
+    "B3": r"B3 – Lenient union (MHV $\cup$ BLS)",
+    "B4": r"B4 – Strict intersection (MHV $\cap$ BLS)",
 }
 
 SOC_VERSION_LABELS = {
@@ -177,7 +192,7 @@ def _occupation_cmp(df: pd.DataFrame) -> pd.DataFrame:
     out = out.rename(
         columns={
             "dataset_short": "Dataset",
-            "reference_crosswalk": "Institutional crosswalk",
+            "reference_crosswalk": "Reference crosswalk",
             "pair_precision_vs_ref": "Pair precision",
             "pair_recall_vs_ref": "Pair recall",
             "pair_f1_vs_ref": "Pair F1",
@@ -301,8 +316,8 @@ def _mismatch_tex() -> str | None:
 
     # Group rows by version; emit a section header per version naming both crosswalks
     ERA_LABELS = {
-        "25.0": r"O*NET~25.0 (SOC~2010): Ref.\,1\,=\,BLS ISCO-SOC;\enspace Ref.\,2\,=\,ESCO--O*NET",
-        "29.2": r"O*NET~29.2 (SOC~2018): Ref.\,1\,=\,ONET-SOC-ESCO;\enspace Ref.\,2\,=\,ESCO--ONET-SOC",
+        "25.0": r"O*NET~25.0 (SOC~2010): Ref.\,1\,=\,BLS;\enspace Ref.\,2\,=\,MHV",
+        "29.2": r"O*NET~29.2 (SOC~2018): Ref.\,1\,=\,ESCO Secretariat;\enspace Ref.\,2\,=\,O*NET Center",
     }
     sections = []
     for ver in ["25.0", "29.2"]:
@@ -502,14 +517,7 @@ def _gt01_validation_tex() -> str | None:
             return None
 
     def _row(r: pd.Series, is_soc10: bool) -> str:
-        label = (
-            r["label"]
-            .replace("&", r"\&").replace("$", r"\$")
-            .replace(" alone", "")
-            .replace(" (semantic, less independent)", "")
-            .replace("∪", r"$\cup$")
-            .replace("∩", r"$\cap$")
-        )
+        label = SCENARIO_LABELS[str(r["label"])[:2]]
         return (
             f"    {label} & {r['pct_in_crosswalk']:.1f}"
             f" & {r['pct_exact']:.1f}"
@@ -522,9 +530,6 @@ def _gt01_validation_tex() -> str | None:
         df = pd.read_csv(GT_RESULTS_DIR / f"chain_eval_onet{tag}_overall.csv")
         is_soc10 = tag in {t for t, _ in SOC10_VERSIONS}
         rows_list = [_row(r, is_soc10) for _, r in df.iterrows()]
-        # Add footnote marker to B1 row (first row of SOC 2010 sections)
-        if is_soc10 and rows_list:
-            rows_list[0] = rows_list[0].replace("ESCO-ONET-MHV &", r"ESCO-ONET-MHV$^{a}$ &")
         sep = r"\midrule" + "\n" if i > 0 else ""
         sections.append(
             f"{sep}\\multicolumn{{5}}{{l}}{{\\emph{{{header}}}}} \\\\[2pt]\n" + "\n".join(rows_list)
