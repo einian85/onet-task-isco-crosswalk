@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -44,12 +45,12 @@ CROSSWALK_LABELS = {
 
 # Display names for the validation scenarios, keyed by scenario code
 SCENARIO_LABELS = {
-    "A1": "A1 – O*NET Center",
-    "A2": "A2 – ESCO Secretariat",
+    "A1": r"A1 – \rev{O*NET Center}",
+    "A2": r"A2 – \rev{ESCO Secretariat}",
     "A3": "A3 – Strict intersection",
     "A4": "A4 – Lenient union",
-    "B1": "B1 – MHV$^{a}$",
-    "B2": "B2 – BLS",
+    "B1": r"B1 – \rev{MHV}$^{a}$",
+    "B2": r"B2 – \rev{BLS}",
     "B3": r"B3 – Lenient union (MHV $\cup$ BLS)",
     "B4": r"B4 – Strict intersection (MHV $\cap$ BLS)",
 }
@@ -68,6 +69,25 @@ def _write_tex(df: pd.DataFrame, out_path: Path, longtable: bool = False,
                caption: str | None = None, label: str | None = None) -> None:
     df.to_latex(out_path, index=False, escape=True,
                 longtable=longtable, caption=caption, label=label)
+
+
+# Cells changed in the SJI revision are wrapped in \rev{...}, which the manuscript
+# defines as blue text. REV_FALLBACK makes each table compile unchanged (no colour)
+# wherever \rev is not defined.
+REV_FALLBACK = "\\providecommand{\\rev}[1]{#1}%\n"
+
+# Table file -> cell texts to mark as revised
+REV_CELLS = {
+    "table_occupation_level_comparison.tex": ["Reference crosswalk", "O*NET Center", "ESCO Secretariat", "MHV", "BLS"],
+    "table_reference_internal_comparison.tex": ["O*NET Center", "ESCO Secretariat", "MHV", "BLS", "---"],
+}
+
+
+def _mark_rev_cells(tex: str, cells: list[str]) -> str:
+    """Wrap whole table cells whose text is in `cells` in \\rev{...}."""
+    alts = "|".join(re.escape(c) for c in sorted(cells, key=len, reverse=True))
+    pattern = re.compile(r"(^|&)(\s*)(" + alts + r")(\s*)(?=&|\\\\)", re.M)
+    return REV_FALLBACK + pattern.sub(lambda m: f"{m.group(1)}{m.group(2)}\\rev{{{m.group(3)}}}{m.group(4)}", tex)
 
 
 def _write_raw_tex(content: str, out_path: Path) -> None:
@@ -339,23 +359,26 @@ def _mismatch_tex() -> str | None:
             imp_code  = str(r["isco_imp"]).zfill(4)
             imp_label = _esc(r["implied_occupation_label"])
             data_rows.append(
-                f"    {soc_code} & {soc_title} & {imp_code} {imp_label} & "
-                f"{_accepted(r['ref1_iscos'], r['ref1_titles'])} & "
-                f"{_accepted(r['ref2_iscos'], r['ref2_titles'])} \\\\"
+                f"    \\rev{{{soc_code}}} & \\rev{{{soc_title}}} & \\rev{{{imp_code} {imp_label}}} & "
+                f"\\rev{{{_accepted(r['ref1_iscos'], r['ref1_titles'])}}} & "
+                f"\\rev{{{_accepted(r['ref2_iscos'], r['ref2_titles'])}}} \\\\"
             )
-        header = f"    \\multicolumn{{5}}{{l}}{{\\emph{{{ERA_LABELS[ver]}}}}} \\\\[2pt]"
+        header = f"    \\multicolumn{{5}}{{l}}{{\\rev{{\\emph{{{ERA_LABELS[ver]}}}}}}} \\\\[2pt]"
         sections.append(header + "\n" + "\n".join(data_rows))
 
     body = "\n\\midrule\n".join(sections)
     # Column widths sum to 22.3cm; with 5×2×tabcolsep ≈ 2.1cm → ~24.4cm, within A4 landscape linewidth
+    # The table's content is new in the SJI revision, so every cell is wrapped in \rev
+    # (a colour set around the whole tabular does not reach p{} cells)
     return (
-        r"{\footnotesize" + "\n"
+        REV_FALLBACK
+        + r"{\footnotesize" + "\n"
         r"\begin{tabular}{p{1.2cm}p{4.3cm}p{4.6cm}p{6.1cm}p{6.1cm}}" + "\n"
         r"\toprule" + "\n"
-        r"\multicolumn{2}{c}{SOC Occupation} & Pipeline ISCO & "
-        r"Ref.~1 accepts & Ref.~2 accepts \\" + "\n"
+        r"\multicolumn{2}{c}{\rev{SOC Occupation}} & \rev{Pipeline ISCO} & "
+        r"\rev{Ref.~1 accepts} & \rev{Ref.~2 accepts} \\" + "\n"
         r"\cmidrule(r){1-2}" + "\n"
-        r"Code & Title & & & \\" + "\n"
+        r"\rev{Code} & \rev{Title} & & & \\" + "\n"
         r"\midrule" + "\n"
         + body + "\n"
         r"\bottomrule" + "\n"
@@ -537,7 +560,7 @@ def _gt01_validation_tex() -> str | None:
 
     body = "\n".join(sections)
 
-    return r"""\begin{center}
+    return REV_FALLBACK + r"""\begin{center}
 \begin{small}
 \begin{longtable}{lrrrr}
 \caption{Chain crosswalk validation: match rates across scenarios and representative O*NET releases.}
@@ -593,6 +616,9 @@ def main() -> None:
         out_df = transform(df)
         out_path = TABLES_DIR / tex_name
         _write_tex(out_df, out_path, longtable=use_longtable, caption=cap, label=lbl)
+        if tex_name in REV_CELLS:
+            out_path.write_text(_mark_rev_cells(out_path.read_text(encoding="utf-8"), REV_CELLS[tex_name]),
+                                encoding="utf-8")
         written.append(out_path)
 
     # Raw-tex tables generated directly from data
