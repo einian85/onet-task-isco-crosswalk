@@ -35,6 +35,10 @@ Minor:
 
 18. **"53.7%, all 18,796 tasks" (fact 114).** The rate is over the 18,773 tasks the crosswalk covers, the *n* used for its confidence interval.
 
+Found after this audit (7 October 2026):
+
+19. **Tables C3 and C4 used each reference's "first" unit group, which is undefined for unranked references.** The O*NET Center file (ESCO→O*NET-SOC) and the BLS crosswalk list unit groups without any score, so `report_occupation.py` gave every pair the score 1.0 and the "top-1" was the lowest ISCO code. The C3 in-set rates for the SOC 2018 pair (0.598 / 0.690 / 0.738) therefore measured nothing, and five of the eight C4 "mismatches" were not disagreements: the pipeline's group was on the reference list (fact 105: the O*NET Center file lists both 2269 and 3211 for Medical Dosimetrists, and both files list 7113 for Rock Splitters in 29.2). The validation itself (`validation/shared.py::evaluate_match`) and Table C2 use the full accepted sets and are not affected. Fixed: C3 reports no in-set rates when Reference A is unranked (`UNRANKED_REFERENCES`), and C4 now lists occupations whose pipeline group is accepted by neither reference, with every group each reference accepts. The Appendix C text was rewritten around the new examples.
+
 ---
 
 ## Abstract
@@ -194,8 +198,8 @@ Minor:
 | 101 | Table C1 reports 25.1, 29.2, 30.3 (SOC 2018) and 15.1, 20.0, 25.0 (SOC 2010) | App. C | `tables/table_gt01_validation.tex` | ok | |
 | 102 | ESCO–O*NET-SOC chain crosswalks cover SOC 2018; ESCO–O*NET and BLS cover SOC 2010 | App. C | Scenario sets per era | ok | |
 | 103 | 29.2 A4 (n = 18,773): exact [53.0, 54.4], sub-major [71.6, 72.8], major [82.6, 83.6]; 25.0 B3 (n = 19,735): exact 36.6 [35.9, 37.3], major 66.4 [65.7, 67.1]; all within ±0.7 pp | App. C | Wilson intervals from chain eval | ok | |
-| 104 | Table C2: modal ISCO per SOC; pair precision and in-set rates; Table C3: internal consistency of reference crosswalks | App. C | `report_occupation.py`, `export_latex.py` | generated tables | |
-| 105 | Medical Dosimetrists (29-2036): pipeline 3211, both references 2269; Rock Splitters (47-5051): pipeline 7113, ESCO→O*NET-SOC 7113, O*NET-SOC→ESCO 8114 | App. C | `tables/table_mismatch_examples.tex` | ok | |
+| 104 | Table C2: modal ISCO per SOC; pair precision and in-set rates; Table C3: internal consistency of reference crosswalks | App. C | `report_occupation.py`, `export_latex.py` | generated tables; C3 SOC 2018 in-set rates **ERROR** (issue 19) | |
+| 105 | Medical Dosimetrists (29-2036): pipeline 3211, both references 2269; Rock Splitters (47-5051): pipeline 7113, ESCO→O*NET-SOC 7113, O*NET-SOC→ESCO 8114 | App. C | `tables/table_mismatch_examples.tex` | **ERROR** (issue 19) | |
 | 106 | The in-set rate is a lower bound on true quality when references contain errors | App. C | Argument | statement | |
 
 ## Appendix D — Author Annotation

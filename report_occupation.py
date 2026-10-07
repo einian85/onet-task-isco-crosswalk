@@ -301,6 +301,12 @@ def reference_subset_for_soc_version(refs: dict[str, pd.DataFrame], soc_version:
     return {}  # soc09, soc06, soc_pre06: no matching institutional crosswalk
 
 
+# Reference crosswalks that list SOC-ISCO pairs without any score or match type
+# (loaded with a constant score of 1.0). A "top-1" group is not defined for them:
+# top1_mapping would break the tie by the lowest ISCO code.
+UNRANKED_REFERENCES = {"XW18.1_esco_to_onetsoc", "XW10.2_isco_soc"}
+
+
 def build_reference_internal_comparison(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for soc_version in ("soc10", "soc18"):
@@ -314,6 +320,9 @@ def build_reference_internal_comparison(refs: dict[str, pd.DataFrame]) -> pd.Dat
                 right_df = subset[right]
                 pair_metrics = compare_pair_sets(left_df, right_df)
                 top1_metrics = compare_top1_between_refs(left_df, right_df)
+                if left in UNRANKED_REFERENCES:
+                    for key in ("top1_agreement_share", "top1_sub_major_share", "top1_major_group_share"):
+                        top1_metrics[key] = float("nan")
                 rows.append(
                     {
                         "soc_version": soc_version,
@@ -476,6 +485,14 @@ def build_stage_task_examples() -> pd.DataFrame:
 
 
 def build_top1_mismatch_examples(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Occupations whose pipeline top-1 ISCO group is accepted by neither reference crosswalk.
+
+    A mismatch is a true disagreement under the lenient benchmark used in the paper's
+    headline validation: the pipeline's most common ISCO group for the SOC occupation is
+    absent from the union of both references' accepted sets. Each row lists the full
+    accepted set of each reference (two of the references carry no ranking, so no single
+    "reference answer" exists; see UNRANKED_REFERENCES).
+    """
     rows: list[pd.DataFrame] = []
     isco_def = pd.read_excel(
         "data/isco/ISCO-08 EN Structure and definitions.xlsx",
@@ -484,66 +501,55 @@ def build_top1_mismatch_examples(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
     isco_def = isco_def[isco_def["Level"] == 4].copy()
     isco_def["isco_code"] = isco_def["ISCO 08 Code"].astype(str).str.zfill(4)
-    isco_title_map = isco_def[["isco_code", "Title EN"]].rename(columns={"Title EN": "reference_isco_title"}).drop_duplicates(subset=["isco_code"])
+    isco_titles = isco_def.drop_duplicates(subset=["isco_code"]).set_index("isco_code")["Title EN"].to_dict()
+
+    def _sets(ref_df: pd.DataFrame | None) -> dict[str, set[str]]:
+        if ref_df is None:
+            return {}
+        codes = ref_df.assign(isco_code=ref_df["isco_code"].astype(str).str.zfill(4))
+        return codes.groupby("soc_code")["isco_code"].apply(set).to_dict()
+
+    def _fmt(codes: set[str]) -> tuple[str, str]:
+        ordered = sorted(codes)
+        return "; ".join(ordered), "; ".join(isco_titles.get(c, "") for c in ordered)
 
     for dataset_id, meta in DATASETS.items():
         implied_links = load_implied_links(meta)
         implied_pairs = aggregate_implied_soc_isco(implied_links)
         imp_top = implied_pairs.sort_values(["soc_code", "support_share", "task_support"], ascending=[True, False, False]).drop_duplicates("soc_code")
         imp_top = imp_top.rename(columns={"isco_code": "isco_imp", "support_share": "imp_support_share", "task_support": "imp_task_support"})
+        imp_top["isco_imp"] = imp_top["isco_imp"].astype(str).str.zfill(4)
 
         ref_name = _select_reference_for_dataset(meta)
-        ref_df = refs[ref_name]
-        ref_top = ref_df.groupby(["soc_code", "isco_code"], as_index=False)["score"].sum()
-        ref_top = ref_top.sort_values(["soc_code", "score"], ascending=[True, False]).drop_duplicates("soc_code")
-        ref_top = ref_top.rename(columns={"isco_code": "isco_ref", "score": "ref_score"})
-
-        soc_titles = implied_links[["soc_code", "Title"]].dropna().drop_duplicates().rename(columns={"Title": "soc_title"})
-        imp_occ = (
-            implied_links.groupby(["soc_code", "isco_code"], as_index=False)["isco_title"]
-            .first()
-            .rename(columns={"isco_code": "isco_imp", "isco_title": "implied_occupation_label"})
-        )
-
-        merged = imp_top.merge(ref_top[["soc_code", "isco_ref", "ref_score"]], on="soc_code", how="inner")
-        merged = merged[merged["isco_imp"] != merged["isco_ref"]].copy()
-        merged = merged.merge(soc_titles, on="soc_code", how="left").merge(imp_occ, on=["soc_code", "isco_imp"], how="left")
-        # Join ISCO title for primary reference; match via zero-padded string to avoid Int64/str mismatch
-        isco_map = isco_title_map.copy()
-        isco_map["isco_ref"] = isco_map["isco_code"].astype(str).str.zfill(4)
-        merged["isco_ref_str"] = merged["isco_ref"].astype(str).str.zfill(4)
-        merged = merged.merge(
-            isco_map[["isco_ref", "reference_isco_title"]].rename(columns={"isco_ref": "isco_ref_str"}),
-            on="isco_ref_str", how="left",
-        ).drop(columns=["isco_ref_str"])
-
-        # Join secondary reference crosswalk top-1 ISCO and its title
         ref2_name = _select_secondary_reference_for_dataset(meta)
-        ref2_df = refs.get(ref2_name)
-        if ref2_df is not None:
-            ref2_top = ref2_df.groupby(["soc_code", "isco_code"], as_index=False)["score"].sum()
-            ref2_top = ref2_top.sort_values(["soc_code", "score"], ascending=[True, False]).drop_duplicates("soc_code")
-            ref2_top = ref2_top.rename(columns={"isco_code": "isco_ref2"})
-            merged = merged.merge(ref2_top[["soc_code", "isco_ref2"]], on="soc_code", how="left")
-            isco_map2 = isco_title_map.copy()
-            isco_map2["isco_ref2_key"] = isco_map2["isco_code"].astype(str).str.zfill(4)
-            merged["isco_ref2_str"] = merged["isco_ref2"].astype(str).str.zfill(4)
-            merged = merged.merge(
-                isco_map2[["isco_ref2_key", "reference_isco_title"]].rename(
-                    columns={"isco_ref2_key": "isco_ref2_str", "reference_isco_title": "reference_isco_title2"}
-                ),
-                on="isco_ref2_str", how="left",
-            ).drop(columns=["isco_ref2_str"])
-        else:
-            merged["isco_ref2"] = None
-            merged["reference_isco_title2"] = None
-            ref2_name = None
+        sets1 = _sets(refs.get(ref_name))
+        sets2 = _sets(refs.get(ref2_name))
+        if not sets1 and not sets2:
+            continue
 
+        imp_top = imp_top[imp_top["soc_code"].isin(set(sets1) | set(sets2))].copy()
+        is_mismatch = pd.Series(
+            [isco not in (sets1.get(s, set()) | sets2.get(s, set()))
+             for isco, s in zip(imp_top["isco_imp"], imp_top["soc_code"])],
+            index=imp_top.index, dtype=bool,
+        )
+        imp_top = imp_top[is_mismatch].copy()
+
+        imp_top["implied_occupation_label"] = imp_top["isco_imp"].map(isco_titles)
+        ref1 = [_fmt(sets1.get(s, set())) for s in imp_top["soc_code"]]
+        ref2 = [_fmt(sets2.get(s, set())) for s in imp_top["soc_code"]]
+        imp_top["ref1_iscos"] = [r[0] for r in ref1]
+        imp_top["ref1_titles"] = [r[1] for r in ref1]
+        imp_top["ref2_iscos"] = [r[0] for r in ref2]
+        imp_top["ref2_titles"] = [r[1] for r in ref2]
+
+        soc_titles = implied_links[["soc_code", "Title"]].dropna().drop_duplicates("soc_code").rename(columns={"Title": "soc_title"})
+        merged = imp_top.merge(soc_titles, on="soc_code", how="left")
         merged["dataset_id"] = dataset_id
         merged["dataset_short"] = meta["short"]
         merged["reference_crosswalk"] = ref_name
         merged["reference_crosswalk2"] = ref2_name
-        merged = merged.sort_values(["imp_support_share", "imp_task_support"], ascending=False).head(12)
+        merged = merged.sort_values(["imp_support_share", "imp_task_support", "soc_code"], ascending=[False, False, True]).head(12)
         rows.append(
             merged[
                 [
@@ -554,10 +560,10 @@ def build_top1_mismatch_examples(refs: dict[str, pd.DataFrame]) -> pd.DataFrame:
                     "soc_title",
                     "isco_imp",
                     "implied_occupation_label",
-                    "isco_ref",
-                    "reference_isco_title",
-                    "isco_ref2",
-                    "reference_isco_title2",
+                    "ref1_iscos",
+                    "ref1_titles",
+                    "ref2_iscos",
+                    "ref2_titles",
                     "imp_task_support",
                     "imp_support_share",
                 ]

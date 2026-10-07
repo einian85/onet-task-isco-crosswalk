@@ -226,6 +226,10 @@ def _reference_internal(df: pd.DataFrame) -> pd.DataFrame:
     for col in ["Pair precision", "Pair recall", "Pair F1", "In-set (4-digit)", "In-set (2-digit)", "In-set (1-digit)"]:
         if col in out.columns:
             out[col] = _fmt_float(out[col], 3)
+    # In-set rates are undefined (NaN) when Reference A has no ranking; show a dash
+    for col in ["In-set (4-digit)", "In-set (2-digit)", "In-set (1-digit)"]:
+        if col in out.columns:
+            out[col] = out[col].replace("", "---")
     return out
 
 
@@ -305,39 +309,38 @@ def _mismatch_tex() -> str | None:
         sub = df[ver_str == ver]
         if sub.empty:
             continue
+        # Each reference cell lists every unit group the reference accepts for the SOC
+        # occupation (none of which is the pipeline's group), one per line.
+        def _accepted(codes: object, titles: object) -> str:
+            if pd.isna(codes) or not str(codes).strip():
+                return r"\emph{not covered}"
+            pairs = list(zip(str(codes).split("; "), str(titles).split("; ")))
+            return r" \newline ".join(f"{c} {_esc(t)}" for c, t in pairs)
+
         data_rows = []
         for idx, r in sub.iterrows():
             soc_code  = _esc(r["soc_code"])
             soc_title = _esc(r["soc_title"])
-            imp_code  = int(r["isco_imp"])
+            imp_code  = str(r["isco_imp"]).zfill(4)
             imp_label = _esc(r["implied_occupation_label"])
-            ref_code  = int(r["isco_ref"])
-            ref_label = _esc(r["reference_isco_title"])
-            ref2_raw   = r.get("isco_ref2")
-            ref2_title = r.get("reference_isco_title2")
-            if pd.notna(ref2_raw) and pd.notna(ref2_title):
-                ref2_code  = int(float(ref2_raw))
-                ref2_label = _esc(ref2_title)
-            else:
-                ref2_code  = r"---"
-                ref2_label = ""
             data_rows.append(
-                f"    {soc_code} & {soc_title} & {imp_code} & {imp_label} & "
-                f"{ref_code} & {ref_label} & {ref2_code} & {ref2_label} \\\\"
+                f"    {soc_code} & {soc_title} & {imp_code} {imp_label} & "
+                f"{_accepted(r['ref1_iscos'], r['ref1_titles'])} & "
+                f"{_accepted(r['ref2_iscos'], r['ref2_titles'])} \\\\"
             )
-        header = f"    \\multicolumn{{8}}{{l}}{{\\emph{{{ERA_LABELS[ver]}}}}} \\\\[2pt]"
+        header = f"    \\multicolumn{{5}}{{l}}{{\\emph{{{ERA_LABELS[ver]}}}}} \\\\[2pt]"
         sections.append(header + "\n" + "\n".join(data_rows))
 
     body = "\n\\midrule\n".join(sections)
-    # Column widths sum to 22.3cm; with 8×2×tabcolsep ≈ 3.4cm → ~25.7cm = A4 landscape linewidth
+    # Column widths sum to 22.3cm; with 5×2×tabcolsep ≈ 2.1cm → ~24.4cm, within A4 landscape linewidth
     return (
         r"{\footnotesize" + "\n"
-        r"\begin{tabular}{p{1.2cm}p{5.0cm}p{0.8cm}p{4.6cm}p{0.8cm}p{4.6cm}p{0.8cm}p{4.6cm}}" + "\n"
+        r"\begin{tabular}{p{1.2cm}p{4.3cm}p{4.6cm}p{6.1cm}p{6.1cm}}" + "\n"
         r"\toprule" + "\n"
-        r"\multicolumn{2}{c}{SOC Occupation} & \multicolumn{2}{c}{Pipeline ISCO} & "
-        r"\multicolumn{2}{c}{Ref.~1 ISCO} & \multicolumn{2}{c}{Ref.~2 ISCO} \\" + "\n"
-        r"\cmidrule(r){1-2}\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(l){7-8}" + "\n"
-        r"Code & Title & Code & Label & Code & Label & Code & Label \\" + "\n"
+        r"\multicolumn{2}{c}{SOC Occupation} & Pipeline ISCO & "
+        r"Ref.~1 accepts & Ref.~2 accepts \\" + "\n"
+        r"\cmidrule(r){1-2}" + "\n"
+        r"Code & Title & & & \\" + "\n"
         r"\midrule" + "\n"
         + body + "\n"
         r"\bottomrule" + "\n"
