@@ -37,7 +37,9 @@ Minor:
 
 Found after this audit (7 October 2026):
 
-19. **Tables C3 and C4 used each reference's "first" unit group, which is undefined for unranked references.** The O*NET Center file (ESCO→O*NET-SOC) and the BLS crosswalk list unit groups without any score, so `report_occupation.py` gave every pair the score 1.0 and the "top-1" was the lowest ISCO code. The C3 in-set rates for the SOC 2018 pair (0.598 / 0.690 / 0.738) therefore measured nothing, and five of the eight C4 "mismatches" were not disagreements: the pipeline's group was on the reference list (fact 105: the O*NET Center file lists both 2269 and 3211 for Medical Dosimetrists, and both files list 7113 for Rock Splitters in 29.2). The validation itself (`validation/shared.py::evaluate_match`) and Table C2 use the full accepted sets and are not affected. Fixed: C3 reports no in-set rates when Reference A is unranked (`UNRANKED_REFERENCES`), and C4 now lists occupations whose pipeline group is accepted by neither reference, with every group each reference accepts. The Appendix C text was rewritten around the new examples.
+19. **Tables C3 and C4 used each reference's "first" unit group, which is undefined for unranked references.** The O*NET Center crosswalk (ESCO→O*NET-SOC) and the BLS crosswalk list unit groups without any score, so `report_occupation.py` gave every pair the score 1.0 and the "top-1" was the lowest ISCO code. The C3 in-set rates for the SOC 2018 pair (0.598 / 0.690 / 0.738) therefore measured nothing, and five of the eight C4 "mismatches" were not disagreements: the pipeline's group was on the reference list (fact 105: the O*NET Center file lists both 2269 and 3211 for Medical Dosimetrists, and both files list 7113 for Rock Splitters in 29.2). The validation itself (`validation/shared.py::evaluate_match`) and Table C2 use the full accepted sets and are not affected. Fixed: C3 reports no in-set rates when Reference A is unranked (`UNRANKED_REFERENCES`), and C4 now lists occupations whose pipeline group is accepted by neither reference, with every group each reference accepts. The Appendix C text was rewritten around the new examples.
+
+20. **Names of the reference crosswalks, and Figure 1 (facts 10, 22, 34, 102).** Each reference crosswalk went by four to six names across the text and tables, and the collective terms varied (institutional crosswalks, concordances, mappings, "files", expert-built crosswalks); MHV was built by academic researchers, so "institutional" did not fit. Section 2.2 gave the SOC 2018 directions reversed: it called the O*NET Center file (ESCO→O*NET-SOC) the "O*NET–ESCO crosswalk" and the ESCO Secretariat file (O*NET-SOC→ESCO) the "ESCO–SOC 2018 crosswalk". "ESCO–O*NET crosswalk" meant MHV in §2.2 and App. C but the joint ESCO/O*NET project in §1. Fact 10 is wrong: three, not two, of the four were built with text similarity (both SOC 2018 crosswalks come from the joint project; see the September 2022 technical report). "Chain crosswalk" was used but never defined. Figure 1 (`data_flow_fig.tex`) still showed the original submission's weights (w_s = 0.675, w_d = 0.030; w_isco = 0.80, w_isco-task = 0.60, w_occ = 0.60). Fixed on 7 October 2026: one name each (O*NET Center, ESCO Secretariat, MHV, BLS crosswalk), "reference crosswalks" collectively, the chain crosswalk defined as task → SOC → ISCO-08 through a reference crosswalk, and Figure 1 updated to the selected configuration. `export_latex.py` uses the same names (`CROSSWALK_LABELS`, `SCENARIO_LABELS`).
 
 ---
 
@@ -59,7 +61,7 @@ Found after this audit (7 October 2026):
 | 7 | O*NET task data used for technology exposure, skill demand, occupational change | §1 | Autor et al. 2003; Acemoglu & Autor 2011; Frey & Osborne 2017 | citation | |
 | 8 | AI-exposure datasets published at O*NET task level, for SOC 2010 and SOC 2018 versions | §1 | Eloundou et al. 2024 | citation | |
 | 9 | O*NET organised under SOC; international statistics use ISCO | §1 | ILO 2012 | citation | |
-| 10 | Four concordances operate at occupation level; two built with text similarity (O*NET Center 2022; Matysiak et al. 2024); all four match titles, not tasks | §1 | Crosswalk documentation; B1 label in chain eval ("semantic") | citation; consistent | |
+| 10 | Four concordances operate at occupation level; two built with text similarity (O*NET Center 2022; Matysiak et al. 2024); all four match titles, not tasks | §1 | Crosswalk documentation; B1 label in chain eval ("semantic") | **ERROR** (issue 20) | |
 | 11 | Related literature on automated coding of free-text occupation responses | §1 | Gweon et al. 2017; Schierholz & Schonlau 2021 | citation | |
 | 12 | Crosswalk versions for all releases v4.0–v30.3, spanning SOC 2018, SOC 2010 and earlier | §1 | `output/` | ok | |
 | 13 | Across the 50 SOC 2010 + SOC 2018 releases: 430–433 groups, 18,783–19,735 tasks, mean cosine similarity 0.691–0.722 | §1 | Release outputs (task and group counts, mean `similarity`) | ok | |
@@ -76,7 +78,7 @@ Found after this audit (7 October 2026):
 | 19 | DWAs: 2,082 granular activity descriptors | §2.1 | `Tasks to DWAs.xlsx` (29.2); `verify_paper_numbers_v2.py` | ok | |
 | 20 | Official ISCO-08 task descriptions available for 435 of 436 unit groups; the remaining one is ISCO 1113 | §2.1 | `ISCO-08 EN Structure and definitions.xlsx` via `pipeline.py::load_isco_standard` | **ERROR**: 427 of 436; 1113 has 7 task items; the nine without are 1439, 3139, 3435, 5249, 7319, 8189, 0110, 0210, 0310 | |
 | 21 | ESCO: approximately 3,000 occupation concepts linked to ISCO-08 | §2.1 | `data/esco/occupations_en.csv` | ok: 3,039 | |
-| 22 | Four concordances used for validation only: SOC 2018 — O*NET–ESCO and ESCO–SOC 2018; SOC 2010 — BLS SOC 2010–ISCO-08 and ESCO–O*NET (Matysiak et al.) | §2.2 | `validation/shared.py`, `validate_chain.py` | ok | |
+| 22 | Four concordances used for validation only: SOC 2018 — O*NET–ESCO and ESCO–SOC 2018; SOC 2010 — BLS SOC 2010–ISCO-08 and ESCO–O*NET (Matysiak et al.) | §2.2 | `validation/shared.py`, `validate_chain.py` | **inconsistent** (issue 20) | |
 
 ## 3 Method
 
@@ -93,7 +95,7 @@ Found after this audit (7 October 2026):
 | 31 | Cosine similarity against all 436 targets; each task assigned to the most similar | §3.3 | `pipeline.py` (FAISS IndexFlatIP over 436 vectors; `max_links_per_task = 1`) | ok | |
 | 32 | Threshold and margin assess confidence; every task still receives an assignment | §3.3 | `pipeline.py::apply_task_filter` (best candidate always kept) | ok | |
 | 33 | ≈30 min to embed ≈19,000 tasks on a CPU, ≈2 GB peak; embeddings cached by hash; FAISS overhead negligible | §3.3 | Runtime; `pipeline.py::embed_texts` | caching ok (text store by hash; since `4e25858` checkpoints also keyed by text hash); runtime not checkable here | |
-| 34 | Figure 1: task side = task text, DWA labels, SOC title; occupation side = ISCO-08 task descriptions + ESCO titles and skills; crosswalks used only for validation | §3, Fig. 1 | `pipeline.py` | ok | |
+| 34 | Figure 1: task side = task text, DWA labels, SOC title; occupation side = ISCO-08 task descriptions + ESCO titles and skills; crosswalks used only for validation | §3, Fig. 1 | `pipeline.py` | ok; but the figure's weights were stale (issue 20) | |
 
 ## 4 Parameter Selection
 
@@ -196,7 +198,7 @@ Found after this audit (7 October 2026):
 |---|------|----------|---------------------|--------------------|---------|
 | 100 | 63 releases across five SOC generations | App. C | `data/version_list.csv` | ok | |
 | 101 | Table C1 reports 25.1, 29.2, 30.3 (SOC 2018) and 15.1, 20.0, 25.0 (SOC 2010) | App. C | `tables/table_gt01_validation.tex` | ok | |
-| 102 | ESCO–O*NET-SOC chain crosswalks cover SOC 2018; ESCO–O*NET and BLS cover SOC 2010 | App. C | Scenario sets per era | ok | |
+| 102 | ESCO–O*NET-SOC chain crosswalks cover SOC 2018; ESCO–O*NET and BLS cover SOC 2010 | App. C | Scenario sets per era | ok; names inconsistent (issue 20) | |
 | 103 | 29.2 A4 (n = 18,773): exact [53.0, 54.4], sub-major [71.6, 72.8], major [82.6, 83.6]; 25.0 B3 (n = 19,735): exact 36.6 [35.9, 37.3], major 66.4 [65.7, 67.1]; all within ±0.7 pp | App. C | Wilson intervals from chain eval | ok | |
 | 104 | Table C2: modal ISCO per SOC; pair precision and in-set rates; Table C3: internal consistency of reference crosswalks | App. C | `report_occupation.py`, `export_latex.py` | generated tables; C3 SOC 2018 in-set rates **ERROR** (issue 19) | |
 | 105 | Medical Dosimetrists (29-2036): pipeline 3211, both references 2269; Rock Splitters (47-5051): pipeline 7113, ESCO→O*NET-SOC 7113, O*NET-SOC→ESCO 8114 | App. C | `tables/table_mismatch_examples.tex` | **ERROR** (issue 19) | |

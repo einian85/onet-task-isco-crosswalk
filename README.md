@@ -160,12 +160,14 @@ This reads `data/version_list.csv` and places normalised `Task Statements.txt` (
 
 **Reference crosswalks** (used for validation only):
 
-| Source | File | Save to |
-|--------|------|---------|
-| Matysiak et al. (2024) ESCO-O*NET | `esco_onet_crosswalk.csv` | `data/crosswalks/` |
-| BLS SOC 2010 <-> ISCO-08 | `isco_soc_crosswalk.xls` | `data/crosswalks/` |
-| O*NET Center ESCO -> O*NET-SOC | `ESCO_to_ONET-SOC.xlsx` | `data/crosswalks/` |
-| ESCO Secretariat O*NET-SOC -> ESCO | `ONET_(Occupations)_0_updated.csv` | `data/crosswalks/` |
+| Name (as in the paper) | Era | Maps | File | Save to |
+|------|-----|------|------|---------|
+| O*NET Center crosswalk | SOC 2018 | ESCO occupations -> O*NET-SOC | `ESCO_to_ONET-SOC.xlsx` | `data/crosswalks/` |
+| ESCO Secretariat crosswalk | SOC 2018 | O*NET-SOC -> ESCO occupations | `ONET_(Occupations)_0_updated.csv` | `data/crosswalks/` |
+| MHV crosswalk (Matysiak, Hardy and van der Velde 2024) | SOC 2010 | ESCO <-> O*NET occupations | `esco_onet_crosswalk.csv` | `data/crosswalks/` |
+| BLS crosswalk | SOC 2010 | SOC 2010 <-> ISCO-08 | `isco_soc_crosswalk.xls` | `data/crosswalks/` |
+
+ESCO occupations each belong to one ISCO-08 unit group, so the three ESCO-based crosswalks also link SOC occupations to ISCO-08.
 
 ---
 
@@ -216,9 +218,11 @@ python verify_paper_numbers_v2.py  # print every key quantity cited in the paper
 
 ## Validation
 
-**Approach 1 - Chain crosswalk agreement.** For each of the 50 SOC 2010 and SOC 2018 releases (v15.1–v30.3), each task's ISCO-08 group is compared with the groups that institutional concordances assign to its SOC occupation. The scenarios are:
-- SOC 2018 releases: ESCO–SOC 2018 alone (A1), SOC 2018–ESCO alone (A2), strict intersection (A3), lenient union (A4).
-- SOC 2010 releases: Matysiak et al. ESCO–O*NET alone (B1), BLS SOC 2010–ISCO-08 alone (B2), lenient union (B3), strict intersection (B4).
+**Approach 1 - Chain crosswalk agreement.** For each of the 50 SOC 2010 and SOC 2018 releases (v15.1–v30.3), each task's ISCO-08 group is compared with the groups that the reference crosswalks accept for its SOC occupation. This task -> SOC -> ISCO-08 link is the chain crosswalk. The scenarios are:
+- SOC 2018 releases: O*NET Center alone (A1), ESCO Secretariat alone (A2), strict intersection (A3), lenient union (A4).
+- SOC 2010 releases: MHV alone (B1), BLS alone (B2), lenient union (B3), strict intersection (B4).
+
+The CSV `label` column keeps the older scenario names (`ESCO-SOC18`, `SOC18-ESCO`, `ESCO-ONET-MHV`, `SOC10-ISCO-BLS`); the codes A1–B4 are the same.
 
 ```bash
 cd validation && python validate_chain.py
