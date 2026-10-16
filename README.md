@@ -4,10 +4,10 @@ Code and data for the O*NET task -> ISCO-08 crosswalk described in:
 
 > Einian, M.
 > 2026.
-> Mapping O*NET Tasks to ISCO Occupations using Text Similarity
-> [manuscript under review]
+> Mapping O*NET Tasks to ISCO Occupations using Text Similarity.
+> *Statistical Journal of the IAOS*, accepted for publication.
 
-The crosswalk files, code and manuscript versions are archived on Zenodo under the concept DOI [10.5281/zenodo.20359118](https://doi.org/10.5281/zenodo.20359118), which resolves to the latest version.
+The crosswalk files and code are archived on Zenodo under the concept DOI [10.5281/zenodo.20359118](https://doi.org/10.5281/zenodo.20359118), which resolves to the latest version.
 
 Pre-computed crosswalk files are in [`output/`](output/). The sections below describe how to reproduce them from scratch.
 
@@ -285,14 +285,22 @@ The full stage files (`S1_RETRIEVE`, `S2_TASK_FILTER`, with `run_id`, `stage`, `
 
 ## Citation
 
-If you use the crosswalks or code, please cite:
+If you use the crosswalks or code, please cite the paper and the archived data and code:
 
 ```bibtex
-@misc{einian2026onet,
-  title  = {Mapping O*NET Tasks to ISCO Occupations using Text Similarity},
+@article{einian2026onet,
+  title   = {Mapping O*NET Tasks to ISCO Occupations using Text Similarity},
+  author  = {Einian, Majid},
+  journal = {Statistical Journal of the IAOS},
+  year    = {2026},
+  note    = {Accepted for publication}
+}
+
+@misc{einian2026onet_data,
+  title  = {{O*NET} Task to {ISCO-08} Crosswalk: Data and Code},
   author = {Einian, Majid},
   year   = {2026},
   doi    = {10.5281/zenodo.20359118},
-  note   = {Manuscript under review}
+  note   = {Zenodo concept DOI; resolves to the latest version}
 }
 ```
